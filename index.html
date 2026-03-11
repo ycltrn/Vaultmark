@@ -1,0 +1,3870 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Vaultmark">
+  <meta name="description" content="Vaultmark - Akıllı Link Yöneticisi">
+  <title>Vaultmark</title>
+  <link rel="manifest" id="pwaManifest">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 52'><g fill='none' stroke-linecap='round' stroke-linejoin='round'><line x1='6' y1='8' x2='6' y2='44' stroke='%23f0f0f0' stroke-width='5'/><line x1='6' y1='8' x2='24' y2='44' stroke='%23f0f0f0' stroke-width='5'/><line x1='24' y1='44' x2='42' y2='8' stroke='%23e8ff47' stroke-width='5'/><line x1='42' y1='8' x2='42' y2='44' stroke='%23e8ff47' stroke-width='5'/></g></svg>">
+  <script>
+    // ===== PWA MANIFEST (inline olarak oluştur) =====
+    const manifest = {
+      name: "Vaultmark",
+      short_name: "Vaultmark",
+      description: "Akıllı Link Yöneticisi",
+      start_url: "./",
+      display: "standalone",
+      orientation: "portrait",
+      background_color: "#0a0a0a",
+      theme_color: "#0a0a0a",
+      icons: [
+        {
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230a0a0a'/><g fill='none' stroke-linecap='round' stroke-linejoin='round'><line x1='40' y1='48' x2='40' y2='144' stroke='%23f0f0f0' stroke-width='16'/><line x1='40' y1='48' x2='80' y2='144' stroke='%23f0f0f0' stroke-width='16'/><line x1='80' y1='144' x2='120' y2='48' stroke='%23e8ff47' stroke-width='16'/><line x1='120' y1='48' x2='120' y2='144' stroke='%23e8ff47' stroke-width='16'/></g></svg>",
+          sizes: "192x192",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        },
+        {
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230a0a0a'/><g fill='none' stroke-linecap='round' stroke-linejoin='round'><line x1='100' y1='120' x2='100' y2='392' stroke='%23f0f0f0' stroke-width='40'/><line x1='100' y1='120' x2='210' y2='392' stroke='%23f0f0f0' stroke-width='40'/><line x1='210' y1='392' x2='320' y2='120' stroke='%23e8ff47' stroke-width='40'/><line x1='320' y1='120' x2='320' y2='392' stroke='%23e8ff47' stroke-width='40'/></g></svg>",
+          sizes: "512x512",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        }
+      ],
+      categories: ["productivity", "utilities"],
+      lang: "tr"
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    document.getElementById('pwaManifest').href = manifestURL;
+
+    // ===== SERVICE WORKER =====
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+const CACHE = 'vaultmark-v1';
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(clients.claim());
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      return cached || fetch(e.request).catch(() => cached);
+    })
+  );
+});
+`;
+      const swBlob = new Blob([swCode], {type: 'application/javascript'});
+      const swURL = URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swURL, {scope: './'}).then(reg => {
+        console.log('SW kayıtlı:', reg.scope);
+      }).catch(err => {
+        console.log('SW hatası (normal - content:// protokolünde çalışmaz):', err.message);
+      });
+    }
+  </script>
+  <style>
+    :root {
+      --bg:#0a0a0a; --surface:#141414; --surface2:#1e1e1e;
+      --accent:#e8ff47; --danger:#ff4444;
+      --text:#f0f0f0; --text2:#888; --border:#2a2a2a; --radius:16px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:120px;-webkit-overflow-scrolling:touch;overscroll-behavior:none;}
+
+    /* HEADER */
+    .header{background:var(--bg);padding:12px 16px 14px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border);}
+    .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,var(--border) 20%,var(--border) 80%,transparent);}
+    .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;}
+    .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;line-height:1.1;display:flex;align-items:center;gap:8px;color:var(--text);flex-shrink:0;}
+    .header-btns{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;}
+    .hdr-btn{background:transparent;color:var(--accent);font-size:11px;padding:5px 8px;border-radius:20px;cursor:pointer;border:1px solid var(--accent);font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:4px;font-weight:500;white-space:nowrap;}
+    .hdr-btn:active{background:#e8ff4715;}
+    .hdr-btn.accent{color:var(--accent);background:transparent;border-color:var(--accent);font-weight:600;}
+    .search-bar{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 14px;gap:10px;transition:border-color 0.2s,box-shadow 0.2s;}
+    .search-bar:focus-within{border-color:rgba(232,255,71,0.3);box-shadow:0 0 0 3px rgba(232,255,71,0.06);}
+    .search-bar input{background:none;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;}
+    .search-bar input::placeholder{color:var(--text2);}
+    .sort-dropdown-wrap{position:relative;}
+    .sort-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;z-index:200;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:none;}
+    .sort-dropdown.open{display:block;}
+    .sort-opt{padding:11px 15px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.15s;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .sort-opt:active{background:var(--surface2);}
+    .sort-opt.active{color:var(--accent);font-weight:600;}
+
+    /* BREADCRUMB */
+    .breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:13px;color:var(--text2);overflow-x:auto;scrollbar-width:none;}
+    .breadcrumb::-webkit-scrollbar{display:none;}
+    .bc-item{cursor:pointer;white-space:nowrap;transition:color 0.2s;}
+    .bc-item:hover{color:var(--accent);}
+    .bc-sep{color:var(--border);}
+    .bc-current{color:var(--text);font-weight:500;}
+
+    /* MULTIBAR */
+    .multibar{display:none;align-items:center;justify-content:space-between;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
+    .multibar.visible{display:flex;}
+    .multibar-info{font-size:13px;color:var(--accent);font-weight:600;font-family:'Syne',sans-serif;}
+    .multibar-actions{display:flex;gap:6px;}
+    .mb-btn{background:transparent;border:1px solid var(--border);color:var(--text2);padding:6px 11px;border-radius:20px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+    .mb-btn:active{background:var(--surface2);}
+    .mb-btn.danger{color:var(--danger);border-color:var(--danger);}
+    .mb-btn.accent{color:#26c6da;border-color:#26c6da;background:transparent;font-weight:500;}
+    .mb-btn.share{color:#ab47bc;border-color:#ab47bc;}
+
+    /* CONTENT */
+    .content{padding:0 16px;}
+    .section-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin:14px 0 10px;}
+
+    /* FOLDER CARD */
+    .folder-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;margin-bottom:9px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:transform 0.18s ease,box-shadow 0.18s ease,border-color 0.18s ease,background 0.18s ease;animation:cardEnter 0.3s ease both;}
+    .folder-card:active{transform:scale(0.975);background:var(--surface2);}
+    .folder-card.selected{border-color:var(--accent);background:rgba(var(--accent-rgb,232,255,71),0.06);}
+    .folder-card:not(.selected):not(:active){box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+    .folder-icon{font-size:22px;flex-shrink:0;}
+    .folder-info{flex:1;min-width:0;}
+    .folder-name{font-weight:600;font-size:14px;font-family:'Syne',sans-serif;}
+    .folder-meta{font-size:12px;color:var(--text2);margin-top:2px;}
+    .folder-actions{display:flex;gap:5px;flex-shrink:0;}
+
+    /* LINK CARD */
+    .link-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;margin-bottom:9px;display:flex;flex-direction:column;gap:8px;transition:transform 0.18s ease,box-shadow 0.18s ease,border-color 0.18s ease;animation:cardEnter 0.3s ease both;position:relative;overflow:hidden;}
+    .link-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 60%);pointer-events:none;}
+    .link-card:active{transform:scale(0.978);background:var(--surface2);}
+    .link-card.selected{border-color:var(--accent);background:rgba(232,255,71,0.05);}
+    .link-card:not(.selected):not(:active){box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+    .link-card-top{display:flex;align-items:center;gap:10px;}
+    .link-card-bottom{display:flex;align-items:center;justify-content:flex-end;gap:5px;border-top:1px solid var(--border);padding-top:7px;}
+    .link-checkbox{width:20px;height:20px;border-radius:6px;border:2px solid #4caf50;display:none;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all 0.2s;}
+    .link-checkbox.visible{display:flex;}
+    .link-checkbox.checked{background:#4caf50;border-color:#4caf50;color:#fff;font-size:11px;font-weight:700;}
+    .link-favicon{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--surface2),var(--border));display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:transform 0.15s;}
+    .link-favicon:active{transform:scale(0.9);}
+    .link-favicon img{width:22px;height:22px;object-fit:contain;}
+    .link-info{flex:1;min-width:0;cursor:pointer;}
+    .link-title{font-weight:500;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .link-url{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .link-actions{display:flex;gap:5px;align-items:center;}
+    .action-btn{width:32px;height:32px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:all 0.15s;}
+    .action-btn:active{transform:scale(0.84);}
+    .action-btn.btn-info{color:#42a5f5;}
+    .action-btn.btn-edit{color:#ffa726;}
+    .action-btn.btn-copy{color:#66bb6a;}
+    .action-btn.btn-del{color:var(--danger);}
+    .action-btn.btn-star{font-size:16px;}
+
+    /* LINK ACTIONS MODAL ROWS */
+    .lact-row{display:flex;align-items:center;gap:14px;padding:13px 14px;background:var(--surface2);border-radius:14px;cursor:pointer;transition:all 0.15s;}
+    .lact-row:active{background:#333;transform:scale(0.98);}
+    .lact-row.move-selected{border:1px solid var(--accent);background:#e8ff4708;}
+    .lact-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--surface);border-radius:10px;}
+    .lact-text{flex:1;}
+    .lact-label{font-size:14px;font-weight:500;margin-bottom:2px;}
+    .lact-desc{font-size:12px;color:var(--text2);}
+    .empty-state{text-align:center;padding:60px 20px;color:var(--text2);animation:fadeIn 0.4s ease;}
+    .empty-icon{font-size:52px;margin-bottom:14px;animation:popIn 0.4s ease 0.1s both;}
+    .empty-title{font-family:'Syne',sans-serif;font-size:17px;color:var(--text);margin-bottom:8px;font-weight:700;}
+    .empty-desc{font-size:13px;line-height:1.7;max-width:220px;margin:0 auto;}
+
+    /* BOTTOM */
+    .bottom-bar{position:fixed;bottom:0;left:0;right:0;padding:14px 16px 22px;background:linear-gradient(to top,var(--bg) 60%,transparent);z-index:100;display:flex;justify-content:center;}
+    .add-btn{background:transparent;color:var(--accent);border:1.5px solid var(--accent);border-radius:16px;padding:14px 44px;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s;box-shadow:0 0 20px rgba(232,255,71,0.12);letter-spacing:0.5px;}
+    .add-btn:active{background:#e8ff4718;transform:scale(0.96);box-shadow:0 0 30px rgba(232,255,71,0.25);}
+
+    /* MODALS */
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+    @keyframes cardEnter{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes popIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px) scale(0.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--text2);transition:background 0.15s;}
+    .pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+    .pin-key{width:72px;height:72px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:22px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:all 0.1s;}
+    .pin-key:active{background:var(--accent);color:#000;transform:scale(0.92);}
+    #appLockScreen{display:none;}
+    #appLockScreen.visible{display:flex !important;}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.25s ease;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+    .modal-overlay.open{opacity:1;pointer-events:all;}
+    .modal{background:var(--surface);border-radius:28px 28px 0 0;padding:22px 18px 38px;width:100%;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.25,1.15,0.5,1);border:1px solid var(--border);border-bottom:none;max-height:72vh;overflow-y:auto;}
+    .modal-overlay.open .modal{transform:translateY(0);}
+    .modal-handle{width:44px;height:5px;background:var(--border);border-radius:3px;margin:0 auto 20px;opacity:0.8;}
+    .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:19px;margin-bottom:18px;}
+    .modal-title span{color:var(--accent);}
+    .input-group{margin-bottom:13px;}
+    .input-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;display:block;}
+    .input-field{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+    .input-field:focus{border-color:rgba(232,255,71,0.4);box-shadow:0 0 0 3px rgba(232,255,71,0.06);}
+    .input-field::placeholder{color:var(--text2);}
+    .url-hint{font-size:12px;color:var(--accent);margin-top:5px;display:none;}
+    .cat-select{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;}
+    .cat-option{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:6px 13px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+    .cat-option.selected{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;}
+    .save-btn{width:auto;margin-left:auto;margin-right:auto;background:transparent;color:var(--accent);border:1.5px solid var(--accent);border-radius:14px;padding:10px 28px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .save-btn:active{transform:scale(0.98);}
+    .divider{height:1px;background:var(--border);margin:14px 0;}
+    .section-sub{font-size:12px;color:var(--text2);margin-bottom:12px;}
+
+    /* FOLDER MGR */
+    .folder-mgr-item{display:flex;align-items:center;gap:8px;padding:10px 11px;background:var(--surface2);border-radius:10px;margin-bottom:7px;}
+    .fld-check{width:20px;height:20px;border-radius:6px;border:2px solid #4caf50;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all 0.2s;}
+    .fld-check.checked{background:#4caf50;border-color:#4caf50;color:#fff;font-size:11px;font-weight:700;}
+    .fld-name{flex:1;font-size:14px;}
+    .fld-sub{font-size:11px;color:var(--text2);}
+    .fld-btn{background:none;border:none;font-size:15px;cursor:pointer;padding:4px 6px;}
+    .fld-multibar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:nowrap;}
+    .fld-mb-btn{background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:20px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;white-space:nowrap;flex:1;text-align:center;}
+    .fld-mb-btn:active{background:#e8ff4715;}
+    .new-cat-row{display:flex;gap:9px;margin-top:14px;align-items:center;justify-content:center;}
+    .new-cat-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;}
+    .new-cat-row input:focus{border-color:var(--accent);}
+    .new-cat-row input::placeholder{color:var(--text2);}
+    .new-cat-btn{background:transparent;color:var(--accent);border:1.5px solid var(--accent);border-radius:14px;padding:10px 22px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+    .new-cat-btn:active{background:#e8ff4715;}
+
+    /* MOVE */
+    .move-opt{display:flex;align-items:center;gap:10px;padding:12px 13px;background:var(--surface2);border-radius:11px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;border:1px solid transparent;}
+    .move-opt.selected{border-color:var(--accent);background:#e8ff4712;}
+    .move-opt:active{opacity:0.8;}
+
+    /* EXPORT */
+    .export-opt{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:var(--surface2);border-radius:12px;margin-bottom:9px;cursor:pointer;transition:all 0.2s;}
+    .export-opt:active{background:#e8ff4715;}
+
+    /* IMPORT DEST */
+    .import-dest-opt{padding:13px 14px;background:var(--surface2);border-radius:12px;margin-bottom:0;cursor:pointer;transition:all 0.2s;border:1.5px solid transparent;}
+    .import-dest-opt.selected{border-color:var(--accent);background:rgba(232,255,71,0.06);}
+    .import-dest-opt:active{opacity:0.8;}
+
+    .link-card.sort-selected{border-color:#4caf50;background:#4caf5015;}
+    .sort-btn{width:26px;height:26px;border-radius:6px;background:var(--surface2);border:1px solid #4caf50;color:#4caf50;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .sort-btn:active{background:#4caf50;color:#000;}
+    .link-card.dragging{opacity:0.4;transform:scale(0.97);}
+    .link-card.drag-over-top{border-top:2px solid var(--accent);}
+    .link-card.drag-over-bot{border-bottom:2px solid var(--accent);}
+    .folder-card.dragging{opacity:0.4;transform:scale(0.97);}
+    .folder-card.drag-over{border-color:var(--accent);background:#e8ff4720;transform:scale(1.01);}
+    .drag-handle{color:var(--text2);font-size:16px;cursor:grab;padding:4px 6px;flex-shrink:0;touch-action:none;}
+    .drag-handle:active{cursor:grabbing;}
+    /* Swipe reveal */
+    .swipe-wrapper{position:relative;overflow:hidden;border-radius:var(--radius);margin-bottom:9px;}
+    .swipe-wrapper .link-card{margin-bottom:0;border-radius:var(--radius);transition:transform 0.2s ease;}
+    .swipe-action-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:18px;background:var(--danger);border-radius:var(--radius);font-size:18px;}
+    .swipe-action-bg.left{justify-content:flex-start;padding-left:18px;background:#4caf50;}
+    /* Stagger animation for card lists */
+    .link-card:nth-child(1){animation-delay:0s}
+    .link-card:nth-child(2){animation-delay:.04s}
+    .link-card:nth-child(3){animation-delay:.08s}
+    .link-card:nth-child(4){animation-delay:.12s}
+    .link-card:nth-child(5){animation-delay:.16s}
+    .link-card:nth-child(n+6){animation-delay:.18s}
+    .folder-card:nth-child(1){animation-delay:0s}
+    .folder-card:nth-child(2){animation-delay:.05s}
+    .folder-card:nth-child(3){animation-delay:.1s}
+    .folder-card:nth-child(n+4){animation-delay:.14s}
+    /* Ripple */
+    .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,0.12);animation:rippleAnim 0.5s ease-out forwards;pointer-events:none;}
+    @keyframes rippleAnim{from{transform:scale(0);opacity:1}to{transform:scale(3);opacity:0}}
+    /* Input focus glow */
+    .input-field:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,255,71,0.08);}
+    /* Section title */
+    .section-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--text2);margin:16px 0 10px;opacity:0.7;}
+
+    .confirm-modal{background:var(--surface);border-radius:28px 28px 0 0;padding:28px 20px 44px;width:100%;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.25,1.15,0.5,1);border:1px solid var(--border);border-bottom:none;}
+    .modal-overlay.open .confirm-modal{transform:translateY(0);}
+    .confirm-icon{font-size:46px;text-align:center;margin-bottom:14px;}
+    .confirm-msg{font-size:14px;color:var(--text2);text-align:center;line-height:1.7;margin-bottom:24px;}
+    .confirm-btns{display:flex;gap:10px;}
+    .confirm-cancel{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:14px;padding:15px;font-family:'Syne',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.15s;}
+    .confirm-cancel:active{opacity:0.7;transform:scale(0.97);}
+    .confirm-ok{flex:1;background:var(--danger);border:none;color:#fff;border-radius:14px;padding:15px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.15s;box-shadow:0 4px 16px rgba(255,68,68,0.25);}
+    .confirm-ok:active{opacity:0.85;transform:scale(0.97);}
+
+    /* TOAST */
+    .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--accent);color:#000;padding:10px 20px;border-radius:24px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;z-index:999;transition:all 0.35s cubic-bezier(0.25,1.15,0.5,1);white-space:nowrap;box-shadow:0 4px 20px rgba(232,255,71,0.3);letter-spacing:0.3px;}
+    .toast.show{transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo" style="display:flex;align-items:center;gap:10px;">
+      <img src="data:image/jpeg;base64,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rGWz47XyA9wylWziWOVmLSF9TUSzOdz3nEpxpboeI7ZOXhOlPD0av/Hia37LYDrp6dLOG381WF4DPJh2FvuwBjiLtUAMwZhq8zYlJV1s8k80zi5z3G5JVFbglt/8K08Ns5SxkfV1mAJyJSFoKNwJUJ+SL//ZAAChCxgAAABQaG90b0VkaXRvcl9SZV9FZGl0X0RhdGF7Im9yaWdpbmFsUGF0aCI6IlwvZGF0YVwvc2VjXC9waG90b2VkaXRvclwvMFwvc3RvcmFnZVwvZW11bGF0ZWRcLzBcL1NtYXJ0U2VsZWN0XzIwMjYwMzExLTIwMzc0Ml9HYWxsZXJ5LmpwZyIsImNsaXBJbmZvVmFsdWUiOiJ7XCJtQ2VudGVyWFwiOjAuNTcwMzA4MjA4NDY1NTc2MixcIm1DZW50ZXJZXCI6MC41MjU5NTcyMjY3NTMyMzQ5LFwibVdpZHRoXCI6MC41NDA5Mzc2MDI1MTk5ODksXCJtSGVpZ2h0XCI6MC42NDU4MTYyMDY5MzIwNjc5LFwibVJvdGF0aW9uXCI6MCxcIm1Sb3RhdGVcIjowLFwibUhGbGlwXCI6MCxcIm1WRmxpcFwiOjAsXCJtUm90YXRpb25FZmZlY3RcIjowLFwibVJvdGF0ZUVmZmVjdFwiOjAsXCJtSEZsaXBFZmZlY3RcIjowLFwibVZGbGlwRWZmZWN0XCI6MH0iLCJ0b25lVmFsdWUiOiJ7XCJicmlnaHRuZXNzXCI6MTAwLFwiZXhwb3N1cmVcIjoxMDAsXCJjb250cmFzdFwiOjEwMCxcInNhdHVyYXRpb25cIjoxMDAsXCJodWVcIjoxMDAsXCJ3Yk1vZGVcIjotMSxcIndiVGVtcGVyYXR1cmVcIjoxMDAsXCJ0aW50XCI6MTAwLFwic2hhZG93XCI6MTAwLFwiaGlnaGxpZ2h0XCI6MTAwfSIsImVmZmVjdFZhbHVlIjoie1wiZmlsdGVySW5kaWNhdGlvblwiOjQwOTcsXCJmaWx0ZXJUeXBlXCI6MCxcImFscGhhVmFsdWVcIjoxMDB9IiwiaXNCbGVuZGluZyI6dHJ1ZSwiaXNOb3RSZUVkaXQiOmZhbHNlLCJzZXBWZXJzaW9uIjoiMTIwMTAwIiwicmVTaXplIjo0LCJyb3RhdGlvbiI6MSwiYWRqdXN0bWVudFZhbHVlIjoie1wibUNyb3BTdGF0ZVwiOjEzMTA3Nn0iLCJpc0FwcGx5U2hhcGVDb3JyZWN0aW9uIjpmYWxzZX0AAKELFgAAAE9yaWdpbmFsX1BhdGhfSGFzaF9LZXk3MTJjN2NhNjQzMDNkYjUxZGZiNGNhOGZmMWUxYTZlZjc1NGU3ODhmYzc0MmIyZGM0YWJhNGVlNTQ4YjdkZDQ1LzE2NjkyU0VGSGoAAAACAAAAAAChC64DAABKAwAAAAChC2QAAABkAAAAJAAAAFNFRlQ=" style="height:38px;width:38px;object-fit:contain;border-radius:8px;" alt="Vaultmark">
+      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;">Vault<span style="color:#3bdc58;">mark</span></span>
+    </div>
+    <div class="header-btns">
+      <div class="sort-dropdown-wrap">
+        <button class="hdr-btn" onclick="toggleSortDropdown(event)">⇅</button>
+        <div class="sort-dropdown" id="sortDropdown">
+          <div style="font-size:10px;color:var(--text2);padding:8px 15px 4px;text-transform:uppercase;letter-spacing:1px;">Linkler</div>
+          <div class="sort-opt active" id="sopt-0" onclick="setSortMode(0)">Manuel <span>✓</span></div>
+          <div class="sort-opt" id="sopt-1" onclick="setSortMode(1)">A → Z</div>
+          <div class="sort-opt" id="sopt-2" onclick="setSortMode(2)">Z → A</div>
+          <div class="sort-opt" id="sopt-3" onclick="setSortMode(3)">Yeni → Eski</div>
+          <div class="sort-opt" id="sopt-4" onclick="setSortMode(4)">Eski → Yeni</div>
+          <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+          <div style="font-size:10px;color:var(--text2);padding:4px 15px;text-transform:uppercase;letter-spacing:1px;">Klasörler</div>
+          <div class="sort-opt active" id="fsopt-0" onclick="setFolderSortMode(0)">Manuel <span>✓</span></div>
+          <div class="sort-opt" id="fsopt-1" onclick="setFolderSortMode(1)">A → Z</div>
+          <div class="sort-opt" id="fsopt-2" onclick="setFolderSortMode(2)">Z → A</div>
+        </div>
+      </div>
+      <button class="hdr-btn" onclick="openCatModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button class="hdr-btn" onclick="openExportModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="2"/>
+          <rect x="7" y="2" width="10" height="7" rx="1"/>
+          <rect x="8" y="13" width="8" height="8" rx="1"/>
+          <line x1="10" y1="5" x2="10" y2="7"/>
+        </svg>
+      </button>
+      <button class="hdr-btn" onclick="openSettingsModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="search-bar">
+    <span>🔍</span>
+    <input type="text" placeholder="Link veya başlık ara..." id="searchInput" oninput="filterLinks()">
+  </div>
+  <div style="padding:0 16px 8px;">
+    <button onclick="openRecentModal()" id="recentBtn"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);padding:9px 14px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <span>🕐 Son Eklenen Linkler</span>
+      <span id="recentBtnCount" style="background:var(--surface);border-radius:6px;padding:2px 8px;font-size:11px;"></span>
+    </button>
+  </div>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb" id="breadcrumb"></div>
+
+<!-- MULTIBAR -->
+<div class="multibar" id="multibar">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div id="selectAllCheck" onclick="toggleSelectAll()"
+      style="width:20px;height:20px;border-radius:6px;border:2px solid #4caf50;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:11px;font-weight:700;transition:all 0.2s;">
+    </div>
+    <div class="multibar-info" id="multibarInfo">0 seçildi</div>
+  </div>
+  <div class="multibar-actions">
+    <button class="mb-btn share" onclick="shareSelected()">↗ Paylaş</button>
+    <button class="mb-btn accent" onclick="openMoveModal()">→ Taşı</button>
+    <button class="mb-btn danger" onclick="deleteSelected()">✕ Sil</button>
+    <button class="mb-btn" onclick="cancelMultiSelect()">✕</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+  <div class="section-title" id="sectionTitle">Tüm Klasörler & Linkler</div>
+  <div id="mainContent"></div>
+</div>
+
+<!-- BOTTOM -->
+<div class="bottom-bar">
+  <button class="add-btn" onclick="openAddLinkModal()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Link Ekle
+  </button>
+</div>
+
+<!-- ADD/EDIT LINK MODAL -->
+<div class="modal-overlay" id="linkModal" onclick="closeOnBg(event,'linkModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="linkModalTitle">Yeni <span>Link</span> Ekle</div>
+    <div class="input-group">
+      <label class="input-label">Link URL</label>
+      <input type="url" class="input-field" id="urlInput"
+        placeholder="Tıkla, otomatik yapıştırır"
+        onfocus="tryAutoPaste()" oninput="checkUrlInput()">
+      <div class="url-hint" id="urlHint">✓ Link algılandı</div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">Başlık (isteğe bağlı)</label>
+      <input type="text" class="input-field" id="titleInput" placeholder="Boş bırakabilirsin">
+    </div>
+    <div class="input-group">
+      <label class="input-label">📝 Not (isteğe bağlı)</label>
+      <textarea class="input-field" id="noteInput" placeholder="Bu link hakkında not ekle..." rows="2" style="resize:none;font-family:inherit;"></textarea>
+    </div>
+    <label class="input-label" style="margin-bottom:10px;">📁 Klasör Seç</label>
+    <div class="cat-select" id="modalCatSelect"></div>
+    <button class="save-btn" id="linkSaveBtn" onclick="saveLink()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Kaydet
+    </button>
+  </div>
+</div>
+
+<!-- FOLDER MANAGER MODAL -->
+<div class="modal-overlay" id="catModal" onclick="closeOnBg(event,'catModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📁 <span>Klasörlerim</span></div>
+    <div class="fld-multibar">
+      <button class="fld-mb-btn" id="selectAllFoldersBtn" onclick="selectAllFolders()">☐ Tümünü Seç</button>
+      <button class="fld-mb-btn" style="color:#26c6da;border-color:#26c6da;" onclick="moveFolderAsSubfolder()">↳ Alt Klasöre Taşı</button>
+      <button class="fld-mb-btn" style="color:var(--danger);border-color:var(--danger);" onclick="deleteSelectedFolders()">✕ Seçilenleri Sil</button>
+    </div>
+    <div id="catManageList"></div>
+    <div class="new-cat-row">
+      <input type="text" id="newCatInput" placeholder="Yeni klasör adı..." onkeydown="if(event.key==='Enter')addCategory()">
+      <button class="new-cat-btn" onclick="addCategory()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Ekle
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE TARGET MODAL -->
+<div class="modal-overlay" id="moveModal" onclick="closeOnBg(event,'moveModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📁 <span>Taşı</span></div>
+    <div class="section-sub" id="moveModalSub"></div>
+    <div id="moveCatList"></div>
+    <button class="save-btn" onclick="confirmMove()">Taşı</button>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportModal" onclick="closeOnBg(event,'exportModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">↓ <span>Yedek & Aktar</span></div>
+
+    <div class="input-label" style="margin-bottom:10px;">📤 Dışa Aktar</div>
+    <div class="export-opt" onclick="openExportSaveModal('all')">
+      <div>
+        <div style="font-size:14px;font-weight:500;">🗂 Tüm Klasörleri Yedekle</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Tüm linkler, klasör hiyerarşisiyle</div>
+      </div>
+      <span style="color:var(--text2);">›</span>
+    </div>
+    <div id="exportCatList"></div>
+
+    <div class="divider"></div>
+
+    <div class="input-label" style="margin-bottom:10px;">📥 İçe Aktar</div>
+    <div style="background:var(--surface2);border:1px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('importFileInput').click()">
+      <div style="font-size:28px;margin-bottom:8px;">📂</div>
+      <div style="font-size:14px;font-weight:500;">HTML Yer İmi Dosyası Seç</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">Vaultmark, Chrome, Firefox, Safari yedekleri desteklenir</div>
+    </div>
+    <input type="file" id="importFileInput" accept=".html,.htm" style="display:none" onchange="prepareImport(event)">
+  </div>
+</div>
+
+<!-- EXPORT SAVE MODAL -->
+<div class="modal-overlay" id="exportSaveModal" onclick="closeOnBg(event,'exportSaveModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💾 <span>Kaydet</span></div>
+
+    <!-- Dosya adı -->
+    <div class="input-label" style="margin-bottom:6px;">Dosya Adı</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;">
+      <input type="text" id="exportFileName" class="input-field" style="flex:1;margin-bottom:0;"
+        placeholder="vaultmark_yedek">
+      <span style="color:var(--text2);font-size:13px;white-space:nowrap;">.html</span>
+    </div>
+
+    <!-- Dizin seçimi -->
+    <div class="input-label" style="margin-bottom:8px;">Kayıt Konumu</div>
+
+    <!-- Varsayılan dizin seçeneği -->
+    <div id="exportDirDefault" onclick="selectExportDir('default')"
+      style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:2px solid var(--accent);border-radius:12px;cursor:pointer;margin-bottom:8px;">
+      <span style="font-size:22px;">📥</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">Varsayılan İndirmeler</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">İndirilenler klasörüne kaydet</div>
+      </div>
+      <div id="exportDirDefaultCheck" style="width:20px;height:20px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;">✓</div>
+    </div>
+
+    <!-- Özel dizin seçeneği -->
+    <div id="exportDirCustom" onclick="selectExportDir('custom')"
+      style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:2px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:16px;">
+      <span style="font-size:22px;">📂</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">Konum & İsim Seç</div>
+        <div id="exportDirCustomLabel" style="font-size:11px;color:var(--text2);margin-top:2px;">Kayıt yeri ve adı seçmek için dokun</div>
+      </div>
+      <div id="exportDirCustomCheck" style="width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);">○</div>
+    </div>
+
+    <!-- Kaydet butonu -->
+    <button class="save-btn" onclick="confirmExportSave()">💾 Kaydet</button>
+  </div>
+</div>
+
+<!-- IMPORT DESTINATION MODAL -->
+<div class="modal-overlay" id="importDestModal" onclick="closeOnBg(event,'importDestModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📥 <span>İçe Aktar</span></div>
+    <div id="importFileInfo" style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text2);display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">📄</span>
+      <div>
+        <div id="importFileName" style="font-weight:600;color:var(--text);font-size:14px;"></div>
+        <div id="importFileStat" style="font-size:12px;margin-top:2px;"></div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Nereye aktarılsın?</div>
+    <div id="importDestOptions" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      <!-- JS ile doldurulacak -->
+    </div>
+    <button class="save-btn" onclick="confirmImport()" style="width:100%;justify-content:center;background:var(--accent);color:#000;border-color:var(--accent);">
+      ✓ İçe Aktar
+    </button>
+  </div>
+</div>
+
+<!-- DUPLICATE LINK MODAL -->
+<div class="modal-overlay" id="dupLinkModal" onclick="closeOnBg(event,'dupLinkModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚠️ <span>Link Zaten Var</span></div>
+
+    <!-- Mevcut kayıtlar -->
+    <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Mevcut Kayıtlar</div>
+    <div id="dupExistingList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+
+    <div style="height:1px;background:var(--border);margin-bottom:14px;"></div>
+
+    <!-- Yine de kaydet -->
+    <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Hangi klasöre kaydet?</div>
+    <div id="dupFolderList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:16px;"></div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeDupModal()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px;font-family:'Syne',sans-serif;font-weight:600;font-size:14px;cursor:pointer;">İptal</button>
+      <button onclick="confirmDupSave()" id="dupSaveBtn" style="flex:2;background:var(--accent);border:none;color:#000;border-radius:12px;padding:13px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;">Yine de Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal" onclick="closeOnBg(event,'settingsModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ <span>Ayarlar</span></div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Son Eklenen Linkler</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text2);flex:1;">Gösterilecek link sayısı</span>
+          <input type="number" id="recentCountInput" min="1" max="100" value="5"
+            style="width:60px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px;text-align:center;font-size:14px;">
+        </div>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Varsayılan Sıralama</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:6px;">Linkler</div>
+        <select id="defaultSortInput" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:13px;margin-bottom:10px;">
+          <option value="0">Manuel</option>
+          <option value="1">A → Z</option>
+          <option value="2">Z → A</option>
+          <option value="3">Yeni → Eski</option>
+          <option value="4">Eski → Yeni</option>
+        </select>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:6px;">Klasörler</div>
+        <select id="defaultFolderSortInput" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:13px;">
+          <option value="0">Manuel</option>
+          <option value="1">A → Z</option>
+          <option value="2">Z → A</option>
+        </select>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Yedekleme</div>
+        <button onclick="openExportSaveModal('all');document.getElementById('settingsModal').classList.remove('open')" 
+          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px;font-size:13px;cursor:pointer;text-align:left;">
+          🗂 Tüm Klasörleri Yedekle
+        </button>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">🗑 Çöp Kutusu</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:13px;font-weight:500;">Otomatik Silme Süresi</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">Çöpteki öğeler kaç gün sonra silinsin?</div>
+          </div>
+          <select id="trashDaysInput" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;font-size:13px;flex-shrink:0;">
+            <option value="0">Manuel (silinmesin)</option>
+            <option value="7">7 gün</option>
+            <option value="14">14 gün</option>
+            <option value="30">30 gün</option>
+            <option value="60">60 gün</option>
+          </select>
+        </div>
+        <button onclick="openTrashFolder()" style="width:100%;margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--danger);padding:10px;font-size:13px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;">
+          <span>🗑</span> Çöp Kutusunu Aç
+        </button>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;position:relative;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Vurgu Rengi</div>
+        <!-- Tema rengi: seçili rengi gösteren buton + açılan dropdown -->
+        <div style="position:relative;">
+          <div id="themeColorTrigger" onclick="openAccentColorModal()" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 13px;cursor:pointer;transition:border-color 0.2s;">
+            <div id="themeColorPreview" style="width:24px;height:24px;border-radius:50%;background:var(--accent);border:2px solid rgba(255,255,255,0.2);flex-shrink:0;"></div>
+            <span style="font-size:13px;flex:1;" id="themeColorLabel">Renk seç</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">🔒 Güvenlik</div>
+
+        <!-- Uygulama PIN -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div style="font-size:13px;font-weight:500;">Uygulama PIN Kilidi</div>
+            <div style="font-size:11px;color:var(--text2);">Açılışta 4 haneli PIN sor</div>
+          </div>
+          <div onclick="toggleAppPin()" id="appPinToggle"
+            style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0;">
+            <div id="appPinThumb" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.2s;"></div>
+          </div>
+        </div>
+
+        <!-- PIN ayarla / değiştir -->
+        <div id="appPinSetRow" style="display:none;margin-bottom:12px;">
+          <button onclick="openSetPinModal()" 
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--accent);padding:10px;font-size:13px;cursor:pointer;font-weight:600;">
+            🔑 PIN'i Ayarla / Değiştir
+          </button>
+        </div>
+
+        <!-- Biyometrik -->
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:13px;font-weight:500;">Biyometrik Kilit</div>
+            <div style="font-size:11px;color:var(--text2);">Parmak izi / yüz tanıma (cihaz destekliyorsa)</div>
+          </div>
+          <div onclick="toggleBiometric()" id="biometricToggle"
+            style="width:44px;height:24px;border-radius:12px;background:var(--border);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0;">
+            <div id="biometricThumb" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.2s;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Bulut Yedekleme</div>
+          <span style="font-size:10px;background:#e8ff4720;color:var(--accent);border:1px solid #e8ff4740;border-radius:20px;padding:2px 8px;font-weight:600;">YAKINDA</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border-radius:10px;opacity:0.5;">
+            <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="none"/><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z" fill="none" stroke="#4285f4" stroke-width="1.5"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="bold" fill="#4285f4">G</text></svg>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:500;">Google Drive</div>
+              <div style="font-size:11px;color:var(--text2);">APK sürümünde aktif olacak</div>
+            </div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#4285f4;opacity:0.4;"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border-radius:10px;opacity:0.5;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#0061ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:500;">Dropbox</div>
+              <div style="font-size:11px;color:var(--text2);">APK sürümünde aktif olacak</div>
+            </div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#0061ff;opacity:0.4;"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface);border-radius:10px;opacity:0.5;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="4" stroke="#00a4ef" stroke-width="1.5"/><path d="M7 12h10M12 7v10" stroke="#00a4ef" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:500;">OneDrive</div>
+              <div style="font-size:11px;color:var(--text2);">APK sürümünde aktif olacak</div>
+            </div>
+            <div style="width:8px;height:8px;border-radius:50%;background:#00a4ef;opacity:0.4;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="saveSettings()" style="width:auto;margin:16px auto 0;display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:var(--accent);border:1.5px solid var(--accent);border-radius:14px;padding:13px 40px;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;cursor:pointer;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Kaydet
+    </button>
+  </div>
+</div>
+
+<!-- RECENT LINKS MODAL -->
+<div class="modal-overlay" id="recentModal" onclick="closeOnBg(event,'recentModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🕐 <span>Son Eklenen Linkler</span></div>
+    <div id="recentModalContent"></div>
+  </div>
+</div>
+
+<!-- LINK INFO MODAL -->
+<div class="modal-overlay" id="infoModal" onclick="closeOnBg(event,'infoModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">ℹ <span>Link Bilgisi</span></div>
+    <div id="infoModalContent"></div>
+  </div>
+</div>
+
+<!-- APP LOCK SCREEN -->
+<div id="appLockScreen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;">&#128274; Vaultmark</div>
+  <div style="font-size:14px;color:var(--text2);">PIN kodunu gir</div>
+  <div id="appLockDots" style="display:flex;gap:14px;">
+    <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+  </div>
+  <div id="appLockError" style="font-size:12px;color:var(--danger);min-height:18px;"></div>
+  <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px;">
+    <button class="pin-key" onclick="appLockKey('1')">1</button>
+    <button class="pin-key" onclick="appLockKey('2')">2</button>
+    <button class="pin-key" onclick="appLockKey('3')">3</button>
+    <button class="pin-key" onclick="appLockKey('4')">4</button>
+    <button class="pin-key" onclick="appLockKey('5')">5</button>
+    <button class="pin-key" onclick="appLockKey('6')">6</button>
+    <button class="pin-key" onclick="appLockKey('7')">7</button>
+    <button class="pin-key" onclick="appLockKey('8')">8</button>
+    <button class="pin-key" onclick="appLockKey('9')">9</button>
+    <button class="pin-key" style="visibility:hidden;"></button>
+    <button class="pin-key" onclick="appLockKey('0')">0</button>
+    <button class="pin-key" onclick="appLockKey('bksp')">&#9003;</button>
+  </div>
+  <button onclick="tryBiometric()" id="biometricBtn" style="display:none;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:12px;color:var(--text2);padding:10px 20px;font-size:13px;cursor:pointer;">
+    &#128070; Parmak İzi ile Aç
+  </button>
+</div>
+
+<!-- SET PIN MODAL -->
+<div class="modal-overlay" id="setPinModal" onclick="closeOnBg(event,'setPinModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#128273; <span>PIN Ayarla</span></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;" id="setPinSubtitle">4 haneli yeni PIN kodunu gir</div>
+    <div id="setPinDots" style="display:flex;gap:14px;justify-content:center;margin-bottom:16px;">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div id="setPinError" style="font-size:12px;color:var(--danger);min-height:16px;text-align:center;margin-bottom:8px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin:0 auto;width:fit-content;">
+      <button class="pin-key" onclick="setPinKey('1')">1</button>
+      <button class="pin-key" onclick="setPinKey('2')">2</button>
+      <button class="pin-key" onclick="setPinKey('3')">3</button>
+      <button class="pin-key" onclick="setPinKey('4')">4</button>
+      <button class="pin-key" onclick="setPinKey('5')">5</button>
+      <button class="pin-key" onclick="setPinKey('6')">6</button>
+      <button class="pin-key" onclick="setPinKey('7')">7</button>
+      <button class="pin-key" onclick="setPinKey('8')">8</button>
+      <button class="pin-key" onclick="setPinKey('9')">9</button>
+      <button class="pin-key" style="visibility:hidden;"></button>
+      <button class="pin-key" onclick="setPinKey('0')">0</button>
+      <button class="pin-key" onclick="setPinKey('bksp')">&#9003;</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER LOCK MODAL -->
+<div class="modal-overlay" id="folderPinModal" onclick="closeOnBg(event,'folderPinModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#128272; <span id="folderPinTitle">Klasör Kilidi</span></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;" id="folderPinSubtitle">Bu klasörün şifresini gir</div>
+    <div id="folderPinDots" style="display:flex;gap:14px;justify-content:center;margin-bottom:16px;">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div id="folderPinError" style="font-size:12px;color:var(--danger);min-height:16px;text-align:center;margin-bottom:8px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin:0 auto;width:fit-content;">
+      <button class="pin-key" onclick="folderPinKey('1')">1</button>
+      <button class="pin-key" onclick="folderPinKey('2')">2</button>
+      <button class="pin-key" onclick="folderPinKey('3')">3</button>
+      <button class="pin-key" onclick="folderPinKey('4')">4</button>
+      <button class="pin-key" onclick="folderPinKey('5')">5</button>
+      <button class="pin-key" onclick="folderPinKey('6')">6</button>
+      <button class="pin-key" onclick="folderPinKey('7')">7</button>
+      <button class="pin-key" onclick="folderPinKey('8')">8</button>
+      <button class="pin-key" onclick="folderPinKey('9')">9</button>
+      <button class="pin-key" style="visibility:hidden;"></button>
+      <button class="pin-key" onclick="folderPinKey('0')">0</button>
+      <button class="pin-key" onclick="folderPinKey('bksp')">&#9003;</button>
+    </div>
+    <div id="folderPinRemoveRow" style="display:none;margin-top:16px;text-align:center;">
+      <button onclick="removeFolderPin()" style="background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:8px 20px;font-size:12px;cursor:pointer;">
+        &#128465; Şifreyi Kaldır
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SET FOLDER PIN MODAL -->
+<div class="modal-overlay" id="setFolderPinModal" onclick="closeOnBg(event,'setFolderPinModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#128274; <span>Klasör Şifresi</span></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;" id="setFolderPinSubtitle">4 haneli şifre belirle</div>
+    <div id="setFolderPinDots" style="display:flex;gap:14px;justify-content:center;margin-bottom:16px;">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div id="setFolderPinError" style="font-size:12px;color:var(--danger);min-height:16px;text-align:center;margin-bottom:8px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin:0 auto;width:fit-content;">
+      <button class="pin-key" onclick="setFolderPinKey('1')">1</button>
+      <button class="pin-key" onclick="setFolderPinKey('2')">2</button>
+      <button class="pin-key" onclick="setFolderPinKey('3')">3</button>
+      <button class="pin-key" onclick="setFolderPinKey('4')">4</button>
+      <button class="pin-key" onclick="setFolderPinKey('5')">5</button>
+      <button class="pin-key" onclick="setFolderPinKey('6')">6</button>
+      <button class="pin-key" onclick="setFolderPinKey('7')">7</button>
+      <button class="pin-key" onclick="setFolderPinKey('8')">8</button>
+      <button class="pin-key" onclick="setFolderPinKey('9')">9</button>
+      <button class="pin-key" style="visibility:hidden;"></button>
+      <button class="pin-key" onclick="setFolderPinKey('0')">0</button>
+      <button class="pin-key" onclick="setFolderPinKey('bksp')">&#9003;</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLOR PICKER MODAL -->
+<div class="modal-overlay" id="colorModal" onclick="closeOnBg(event,'colorModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🎨 <span>Klasör Rengi</span></div>
+    <div id="colorPalette" style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:16px;"></div>
+    
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Renk Çarkı</div>
+      <canvas id="colorWheel" width="220" height="220" style="border-radius:50%;cursor:crosshair;touch-action:none;"></canvas>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;justify-content:center;">
+        <div id="colorPreview" style="width:36px;height:36px;border-radius:8px;background:#42a5f5;border:2px solid var(--border);flex-shrink:0;"></div>
+        <div id="colorHexVal" style="font-size:13px;color:var(--text2);font-family:monospace;">#42a5f5</div>
+        <button onclick="applyWheelColor()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;">Uygula</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="save-btn" style="background:var(--surface2);color:var(--text2);flex:1;" onclick="resetFolderColor()">🔄 Varsayılana Sıfırla</button>
+      <button class="save-btn" style="flex:1;" onclick="setFolderDefaultColor()">📌 Varsayılan Yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACCENT COLOR MODAL -->
+<div class="modal-overlay" id="accentColorModal" onclick="closeOnBg(event,'accentColorModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🎨 <span>Vurgu Rengi</span></div>
+    <div id="accentPalette" style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:16px;"></div>
+
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Renk Çarkı</div>
+      <canvas id="accentColorWheel" width="220" height="220" style="border-radius:50%;cursor:crosshair;touch-action:none;"></canvas>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;justify-content:center;">
+        <div id="accentColorPreview" style="width:36px;height:36px;border-radius:8px;background:var(--accent);border:2px solid var(--border);flex-shrink:0;"></div>
+        <div id="accentColorHexVal" style="font-size:13px;color:var(--text2);font-family:monospace;">#e8ff47</div>
+        <button onclick="applyAccentWheelColor()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;">Uygula</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="save-btn" style="background:var(--surface2);color:var(--text2);flex:1;" onclick="resetAccentColor()">🔄 Varsayılana Sıfırla</button>
+      <button class="save-btn" style="flex:1;" onclick="setAccentAsDefault()">📌 Varsayılan Yap</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="moveSingleModal" onclick="closeOnBg(event,'moveSingleModal')">
+  <div class="modal" style="max-height:75vh;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      Taşı
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="moveSingleTitle"></div>
+    <input type="text" class="input-field" placeholder="🔍 Klasör ara..." oninput="renderMoveSingleList(this.value)" style="margin-bottom:12px;">
+    <div id="moveSingleList" style="display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+</div>
+
+<!-- FOLDER ACTIONS MODAL -->
+<div class="modal-overlay" id="folderActionsModal" onclick="closeOnBg(event,'folderActionsModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="folderActionsTitle" style="font-size:15px;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    <div id="folderActionsContent"></div>
+  </div>
+</div>
+
+<!-- LINK ACTIONS MODAL -->
+<div class="modal-overlay" id="linkActionsModal" onclick="closeOnBg(event,'linkActionsModal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="linkActionsTitle" style="font-size:15px;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    <div id="linkActionsContent"></div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal" onclick="closeOnBg(event,'confirmModal')">
+  <div class="confirm-modal">
+    <div class="modal-handle"></div>
+    <div class="confirm-icon" id="confirmIcon">⚠️</div>
+    <div class="modal-title" style="text-align:center;" id="confirmTitle"></div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">İptal</button>
+      <button class="confirm-ok" id="confirmOkBtn">Onayla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+// folders: { id, name, parentId (null = root), color }
+// links: { id, url, title, folderId, date, time, note, favorite }
+let folders = JSON.parse(localStorage.getItem('vm_folders') || 'null');
+let links   = JSON.parse(localStorage.getItem('vm_links') || 'null');
+let settings = JSON.parse(localStorage.getItem('vm_settings') || 'null');
+
+if (!folders) {
+  folders = [
+    {id:'f1',name:'Genel',parentId:null},
+    {id:'f2',name:'Haber',parentId:null},
+    {id:'f3',name:'Video',parentId:null},
+    {id:'f4',name:'Eğitim',parentId:null},
+    {id:'f5',name:'Sosyal',parentId:null},
+  ];
+}
+if (!links) links = [];
+if (!settings) settings = {
+  recentCount: 5,
+  defaultSortMode: 0,
+  defaultFolderSortMode: 0,
+  accentColor: '#e8ff47',
+};
+
+function applyAccentColor(color) {
+  document.documentElement.style.setProperty('--accent', color);
+}
+applyAccentColor(settings.accentColor || '#e8ff47');
+
+const THEME_COLORS = [
+  // Neon / Canlı
+  {hex:'#e8ff47', label:'Sarı-Yeşil'},
+  {hex:'#00ff99', label:'Neon Yeşil'},
+  {hex:'#00e5ff', label:'Cyan'},
+  {hex:'#ff4488', label:'Neon Pembe'},
+  {hex:'#7c4dff', label:'Neon Mor'},
+  {hex:'#ff6b35', label:'Turuncu'},
+  {hex:'#ff2244', label:'Kırmızı'},
+  {hex:'#ffcc00', label:'Altın'},
+  // Pastel
+  {hex:'#ffb3c6', label:'Pastel Pembe'},
+  {hex:'#bde0fe', label:'Pastel Mavi'},
+  {hex:'#caffbf', label:'Pastel Yeşil'},
+  {hex:'#ffd6a5', label:'Pastel Turuncu'},
+  {hex:'#c8b6ff', label:'Pastel Mor'},
+  {hex:'#fdffb6', label:'Pastel Sarı'},
+  {hex:'#a8dadc', label:'Pastel Teal'},
+  {hex:'#ffcfd2', label:'Pastel Kırmızı'},
+  // Koyu & Zengin
+  {hex:'#4fc3f7', label:'Gökyüzü'},
+  {hex:'#81c784', label:'Açık Yeşil'},
+  {hex:'#ff8a65', label:'Mercan'},
+  {hex:'#ce93d8', label:'Lila'},
+  {hex:'#80cbc4', label:'Teal'},
+  {hex:'#fff176', label:'Limon'},
+  {hex:'#ef9a9a', label:'Gül'},
+  {hex:'#ffffff', label:'Beyaz'},
+];
+
+let themePaletteOpen = false;
+
+function toggleThemePalette() { openAccentColorModal(); }
+function closeThemePalette() {}
+
+function selectThemeColor(hex) {
+  settings.accentColor = hex;
+  applyAccentColor(hex);
+  save();
+  updateSettingsPreview();
+}
+
+// Favoriler klasörü her zaman var olsun
+const FAVORITES_ID = 'favorites';
+if (!folders.find(f => f.id === FAVORITES_ID)) {
+  folders.unshift({id: FAVORITES_ID, name: '⭐ Favoriler', parentId: null, pinned: true});
+}
+
+const TRASH_ID = 'trash';
+if (!folders.find(f => f.id === TRASH_ID)) {
+  folders.push({id: TRASH_ID, name: '🗑 Çöp Kutusu', parentId: null, pinned: true, color: '#616161'});
+}
+
+// Settings default
+if (!settings.trashDays && settings.trashDays !== 0) settings.trashDays = 30;
+
+// Çöp otomatik temizle (uygulama açılışında çalışır)
+function runTrashAutoDelete() {
+  const days = parseInt(settings.trashDays) || 0;
+  if (days === 0) return; // Manuel mod
+  const cutoff = Date.now() - days * 86400000;
+  const before = links.length;
+  links = links.filter(l => !(l.folderId === TRASH_ID && l._trashDate && l._trashDate < cutoff));
+  if (links.length !== before) { save(); }
+}
+runTrashAutoDelete();
+
+function save() {
+  localStorage.setItem('vm_folders', JSON.stringify(folders));
+  localStorage.setItem('vm_links', JSON.stringify(links));
+  localStorage.setItem('vm_settings', JSON.stringify(settings));
+}
+
+// ===== FOLDER FAVORITE =====
+function toggleFolderFavorite(id) {
+  const f = getFolderById(id);
+  if (!f) return;
+  f.favorited = !f.favorited;
+  save(); render();
+  showToast(f.favorited ? '★ Favorilere eklendi' : '☆ Favorilerden çıkarıldı');
+}
+
+// ===== FOLDER ACTIONS MODAL =====
+function openFolderActions(id) {
+  const f = getFolderById(id);
+  if (!f) return;
+  const totalLinks = countAllLinks(id);
+  const subCount = getSubFolders(id).length;
+  document.getElementById('folderActionsTitle').innerHTML =
+    `<span style="color:var(--accent)">📁</span> ${f.name}`;
+  document.getElementById('folderActionsContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div class="lact-row" onclick="showFolderInfo('${id}');closeFolderActions()">
+        <div class="lact-icon" style="color:#42a5f5;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#42a5f5" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Bilgi</div><div class="lact-desc">${totalLinks} link${subCount ? ', '+subCount+' alt klasör' : ''}</div></div>
+      </div>
+      <div class="lact-row" onclick="renameFolder('${id}');closeFolderActions()">
+        <div class="lact-icon" style="color:#ffa726;">✎</div>
+        <div class="lact-text"><div class="lact-label">Yeniden Adlandır</div><div class="lact-desc">Klasör adını değiştir</div></div>
+      </div>
+      <div class="lact-row" onclick="openColorPicker('${id}');closeFolderActions()">
+        <div class="lact-icon" style="color:#ab47bc;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ab47bc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5" fill="#ab47bc"/><circle cx="17.5" cy="10.5" r="0.5" fill="#ab47bc"/><circle cx="8.5" cy="7.5" r="0.5" fill="#ab47bc"/><circle cx="6.5" cy="12.5" r="0.5" fill="#ab47bc"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Renk Değiştir</div><div class="lact-desc">Klasör rengini özelleştir</div></div>
+      </div>
+      <div class="lact-row" onclick="openFolderMoveAction('${id}');closeFolderActions()">
+        <div class="lact-icon" style="color:#26c6da;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#26c6da" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Taşı</div><div class="lact-desc">Başka klasörün içine taşı</div></div>
+      </div>
+      <div class="lact-row" onclick="shareFolderLinks('${id}');closeFolderActions()">
+        <div class="lact-icon" style="color:#66bb6a;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#66bb6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Paylaş</div><div class="lact-desc">Klasördeki tüm linkleri paylaş</div></div>
+      </div>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div class="lact-row" onclick="confirmDeleteFolder('${id}');closeFolderActions()">
+        <div class="lact-icon" style="color:var(--danger);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label" style="color:var(--danger);">Çöpe Taşı</div><div class="lact-desc">Klasörü çöp kutusuna gönder</div></div>
+      </div>
+    </div>`;
+  document.getElementById('folderActionsModal').classList.add('open');
+}
+
+function closeFolderActions() {
+  document.getElementById('folderActionsModal').classList.remove('open');
+}
+
+// ===== FOLDER INFO =====
+function showFolderInfo(id) {
+  const f = getFolderById(id);
+  if (!f) return;
+  const totalLinks = countAllLinks(id);
+  const subCount = getSubFolders(id).length;
+  const parent = f.parentId ? getFolderById(f.parentId) : null;
+  const fLinks = getFolderLinks(id);
+  const lastAdded = fLinks.sort((a,b) => ((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||''))).at(0);
+  document.getElementById('infoModalContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Klasör Adı</div>
+        <div style="font-size:15px;font-weight:600;">${f.name}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Link</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent);">${totalLinks}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Alt Klasör</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent);">${subCount}</div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Konum</div>
+        <div style="font-size:13px;">📁 ${parent ? parent.name : 'Ana Sayfa'}</div>
+      </div>
+      ${lastAdded ? `<div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Son Eklenen</div>
+        <div style="font-size:13px;font-weight:500;">${lastAdded.title || getDomain(lastAdded.url)}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">${lastAdded.date || ''}</div>
+      </div>` : ''}
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;">Şifre Korumalı</div>
+        <div style="font-size:13px;font-weight:600;color:${f.pin ? '#ef5350':'#4caf50'}">${f.pin ? '🔒 Evet' : '🔓 Hayır'}</div>
+      </div>
+    </div>`;
+  document.getElementById('infoModal').classList.add('open');
+}
+
+// ===== FOLDER SHARE =====
+async function shareFolderLinks(id) {
+  const folderLinks = getFolderLinks(id);
+  const f = getFolderById(id);
+  if (!folderLinks.length) { showToast('⚠️ Klasör boş'); return; }
+  const text = `📁 ${f?.name}\n\n` + folderLinks.map(l => `${l.title || getDomain(l.url)}\n${l.url}`).join('\n\n');
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  if (navigator.share) {
+    try { await navigator.share({ title: f?.name, text }); return; } catch(e) {}
+  }
+  showToast(`⎘ ${folderLinks.length} link kopyalandı!`);
+}
+
+// ===== FOLDER MOVE (for folder actions) =====
+function openFolderMoveAction(id) {
+  showTouchMoveMenu(id);
+}
+
+// ===== TRASH =====
+function openTrashFolder() {
+  document.getElementById('settingsModal').classList.remove('open');
+  navigate(TRASH_ID);
+}
+
+// Çöp klasöründeyken özel içerik render et (kalıcı sil + geri yükle)
+function renderTrashActions(linkId) {
+  return `
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button onclick="restoreFromTrash('${linkId}')" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:#4caf50;padding:7px;font-size:12px;font-weight:600;cursor:pointer;">↩ Geri Yükle</button>
+      <button onclick="confirmPermanentDelete('${linkId}')" style="flex:1;background:var(--surface2);border:1px solid var(--danger)44;border-radius:8px;color:var(--danger);padding:7px;font-size:12px;font-weight:600;cursor:pointer;">🗑 Kalıcı Sil</button>
+    </div>`;
+}
+
+function restoreFromTrash(id) {
+  const l = links.find(x => x.id === id);
+  if (!l) return;
+  // Orijinal klasör hala var mı?
+  const origFolder = l._origFolderId ? getFolderById(l._origFolderId) : null;
+  l.folderId = origFolder ? l._origFolderId : null;
+  delete l._trashDate;
+  delete l._origFolderId;
+  save(); render();
+  showToast('↩ Geri yüklendi', 'success');
+}
+
+function confirmPermanentDelete(id) {
+  showConfirm('🗑', 'Kalıcı Silinsin mi?', 'Bu işlem geri alınamaz!',
+    () => { links = links.filter(l => l.id !== id); save(); render(); showToast('🗑 Silindi'); }
+  );
+}
+
+function emptyTrash() {
+  showConfirm('🗑', 'Çöp Kutusunu Boşalt', 'Tüm çöp öğeleri kalıcı olarak silinecek!',
+    () => {
+      links = links.filter(l => l.folderId !== TRASH_ID);
+      save(); render();
+      showToast('🗑 Çöp kutusu boşaltıldı');
+    }
+  );
+}
+
+function uid() { return 'f' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+// ===== NAVIGATION =====
+let currentFolderId = null; // null = root
+let navStack = []; // [{id, name}]
+
+function navigate(folderId, folderName) {
+  if (folderId === null) {
+    currentFolderId = null;
+    navStack = [];
+    unlockedFolders.clear();
+    setHashSilent('root');
+  } else {
+    navStack.push({id: currentFolderId, name: currentFolderId ? getFolderById(currentFolderId).name : 'Ana Sayfa'});
+    currentFolderId = folderId;
+    setHashSilent('depth' + navStack.length);
+  }
+  cancelMultiSelect();
+  render();
+}
+
+function navBack() {
+  if (!navStack.length) return;
+  const prev = navStack.pop();
+  // Klasörden çıkınca o klasörün kilidini tekrar kapat
+  if (currentFolderId) unlockedFolders.delete(currentFolderId);
+  currentFolderId = prev.id;
+  cancelMultiSelect();
+  render();
+}
+
+// ===== ANDROID BACK BUTTON (Hash tabanlı — en güvenilir yöntem) =====
+let navigating = false; // navigate() içinde hash değişince hashchange'i engelle
+
+window.addEventListener('hashchange', () => {
+  if (navigating) return;
+
+  // Hash 'start' e düştüyse → kök dizinde 2. geri → çıkış onayı
+  if (location.hash === '#start' || location.hash === '') {
+    setHashSilent('root');
+    showConfirm('👋', 'Çıkış', 'Uygulamadan çıkmak istiyor musunuz?', () => {
+      history.back();
+    }, 'Evet');
+    return;
+  }
+
+  // 1. Confirm modal açıksa kapat
+  if (document.getElementById('confirmModal').classList.contains('open')) {
+    document.getElementById('confirmModal').classList.remove('open');
+    confirmCallback = null;
+    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
+    return;
+  }
+
+  // 2. Başka bir modal açıksa kapat
+  const modals = [...document.querySelectorAll('.modal-overlay.open')];
+  if (modals.length) {
+    const lastModal = modals[modals.length - 1];
+    lastModal.classList.remove('open');
+    // Duplicate modal kapatılırken state temizle
+    if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
+    if (lastModal.id === 'settingsModal') closeThemePalette();
+    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
+    return;
+  }
+
+  // 3. Klasör içindeysek üste çık
+  if (navStack.length > 0) {
+    navBack();
+    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
+    return;
+  }
+
+  // 4. Kök dizindeyiz — root'ta tut
+  setHashSilent('root');
+});
+
+function setHashSilent(hash) {
+  navigating = true;
+  location.hash = hash;
+  setTimeout(() => { navigating = false; }, 100);
+}
+
+function getFolderById(id) { return folders.find(f => f.id === id); }
+function getSubFolders(parentId) { return folders.filter(f => f.parentId === parentId); }
+function getFolderLinks(folderId) { return links.filter(l => l.folderId === folderId); }
+
+// ===== RENDER =====
+function render() {
+  renderBreadcrumb();
+  renderContent();
+  renderCategoryBar_unused();
+  updateCount();
+}
+
+function renderBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  let html = `<span class="bc-item" onclick="navigate(null)">🏠 Ana Sayfa</span>`;
+  // rebuild path from navStack
+  navStack.forEach((item, i) => {
+    html += `<span class="bc-sep">›</span>`;
+    if (item.id === null) {
+      html += `<span class="bc-item" onclick="jumpTo(${i})">Ana Sayfa</span>`;
+    } else {
+      const f = getFolderById(item.id);
+      html += `<span class="bc-item" onclick="jumpTo(${i})">${f ? f.name : '?'}</span>`;
+    }
+  });
+  if (currentFolderId) {
+    const cur = getFolderById(currentFolderId);
+    html += `<span class="bc-sep">›</span><span class="bc-current">📁 ${cur ? cur.name : ''}</span>`;
+  }
+  bc.innerHTML = html;
+}
+
+function jumpTo(stackIndex) {
+  const item = navStack[stackIndex];
+  navStack = navStack.slice(0, stackIndex);
+  currentFolderId = item.id;
+  cancelMultiSelect();
+  render();
+}
+
+function renderCategoryBar_unused() {} // kept for compat
+
+function renderContent() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const container = document.getElementById('mainContent');
+
+  if (query) {
+    // Search mode: show all matching links across all folders
+    const matched = links.filter(l =>
+      (l.title||'').toLowerCase().includes(query) || l.url.toLowerCase().includes(query)
+    );
+    document.getElementById('sectionTitle').textContent = `🔍 "${query}" için sonuçlar`;
+    if (!matched.length) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Sonuç bulunamadı</div></div>`;
+      return;
+    }
+    container.innerHTML = getSortedLinks(matched).map(link => renderLinkCard(link)).join('');
+    return;
+  }
+
+  const isTrash = currentFolderId === TRASH_ID;
+  const subFolders = (currentFolderId === FAVORITES_ID || isTrash) ? [] : getSubFolders(currentFolderId);
+  // Favoriler klasörü ise tüm favori linkleri göster
+  const folderLinks = currentFolderId === FAVORITES_ID
+    ? links.filter(l => l.favorite)
+    : (currentFolderId ? getFolderLinks(currentFolderId) : []);
+
+  document.getElementById('sectionTitle').textContent = currentFolderId
+    ? `📁 ${getFolderById(currentFolderId)?.name || ''}`
+    : 'Ana Sayfa';
+
+  let html = '';
+
+  // Çöp kutusu başlığı + boşalt butonu
+  if (isTrash && folderLinks.length > 0) {
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:10px 14px;background:#ef535015;border-radius:12px;border:1px solid #ef535030;">
+      <div style="font-size:13px;color:#ef5350;font-weight:600;">🗑 ${folderLinks.length} öğe çöpte</div>
+      <button onclick="emptyTrash()" style="background:var(--danger);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Tümünü Sil</button>
+    </div>`;
+  }
+
+  if (subFolders.length) {
+    // Favoriler klasörünü her zaman en üste al
+    const pinned = getSortedFolders(subFolders.filter(f => f.pinned));
+    const normal = getSortedFolders(subFolders.filter(f => !f.pinned));
+    html += [...pinned, ...normal].map(f => renderFolderCard(f)).join('');
+    if (folderLinks.length) html += `<div class="divider"></div>`;
+  }
+
+  if (folderLinks.length) {
+    html += getSortedLinks(folderLinks).map(link => renderLinkCard(link, isTrash)).join('');
+  }
+
+  if (!subFolders.length && !folderLinks.length) {
+    html = `<div class="empty-state">
+      <div class="empty-icon">${isTrash ? '🗑' : (currentFolderId ? '📁' : '🔗')}</div>
+      <div class="empty-title">${isTrash ? 'Çöp kutusu boş' : 'Henüz bir şey yok'}</div>
+      <div class="empty-desc">${isTrash ? 'Silinen öğeler burada görünür' : (currentFolderId ? 'Bu klasör boş' : 'Link Ekle butonuna bas!')}</div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+  updateRecentBtn();
+  // Swipe-to-delete: link kartlarına uygula (multiselect yoksa)
+  if (!multiSelectMode) {
+    container.querySelectorAll('.link-card[id^="lc-"]').forEach(card => {
+      const id = card.id.replace('lc-', '');
+      initSwipe(card, id);
+    });
+  }
+}
+
+function renderFolderCard(f) {
+  const subCount = getSubFolders(f.id).length;
+  const totalLinks = countAllLinks(f.id);
+  const isSelected = selectedItems.has('folder_' + f.id);
+  const isSortSelected = sortSelectedFolderId === f.id;
+  const fColorMain  = f.color || '#66bb6a';
+  const fColorDark  = f.color ? shadeColor(f.color, -50) : '#1b5e20';
+  const fColorLight = f.color ? shadeColor(f.color, 60)  : '#a5d6a7';
+  const isFav = !!f.favorited;
+  const hasPin = !!f.pin;
+  const lockColor = hasPin ? '#ef5350' : '#4caf50';
+  const lockIcon = hasPin
+    ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${lockColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
+    : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${lockColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
+
+  // Özel klasörler (Favoriler, Çöp)
+  if (f.id === FAVORITES_ID || f.id === TRASH_ID) {
+    return `
+    <div class="folder-card ${isSelected?'selected':''}" id="fc-${f.id}"
+      onclick="${multiSelectMode ? `toggleItemSelect('folder_${f.id}')` : `openFolderIfAllowed('${f.id}')`}">
+      <div class="link-checkbox ${multiSelectMode?'visible':''} ${isSelected?'checked':''}" onclick="event.stopPropagation();toggleItemSelect('folder_${f.id}')">
+        ${isSelected?'✓':''}
+      </div>
+      <div class="folder-icon">
+        <svg width="36" height="32" viewBox="0 0 60 52">
+          <rect x="4" y="18" width="52" height="30" rx="5" fill="${fColorDark}"/>
+          <rect x="2" y="14" width="52" height="30" rx="5" fill="${fColorMain}"/>
+          <path d="M2 20 Q2 14 8 14 H22 L26 10 H8 Q2 10 2 16Z" fill="${fColorLight}"/>
+        </svg>
+      </div>
+      <div class="folder-info">
+        <div class="folder-name">${f.name}</div>
+        <div class="folder-meta">${totalLinks} öğe</div>
+      </div>
+    </div>`;
+  }
+
+  return `
+    <div class="folder-card ${isSelected?'selected':''} ${isSortSelected?'sort-selected':''}" id="fc-${f.id}"
+      draggable="true"
+      ondragstart="dragStart(event,'${f.id}')"
+      ondragover="dragOver(event,'${f.id}')"
+      ondragleave="dragLeave(event,'${f.id}')"
+      ondrop="dragDrop(event,'${f.id}')"
+      ondragend="dragEnd(event)"
+      ontouchstart="folderLongPressStart(event,'${f.id}')"
+      ontouchmove="folderLongPressCancel()"
+      ontouchend="folderLongPressEnd(event,'${f.id}')">
+      <div class="link-checkbox ${multiSelectMode?'visible':''} ${isSelected?'checked':''}"
+        onclick="toggleItemSelect('folder_${f.id}')">
+        ${isSelected?'✓':''}
+      </div>
+      ${isSortSelected ? `
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+        <button class="sort-btn" onclick="moveFolderUp('${f.id}')">▲</button>
+        <button class="sort-btn" onclick="moveFolderDown('${f.id}')">▼</button>
+      </div>` : '<span class="drag-handle" title="Sürükle">⠿</span>'}
+      <div class="folder-icon" onclick="${isSortSelected?`cancelFolderSort()`:(multiSelectMode?`toggleItemSelect('folder_${f.id}')`:`openFolderIfAllowed('${f.id}')`)}">
+        <svg width="36" height="32" viewBox="0 0 60 52">
+          <rect x="4" y="18" width="52" height="30" rx="5" fill="${fColorDark}"/>
+          <rect x="2" y="14" width="52" height="30" rx="5" fill="${fColorMain}"/>
+          <path d="M2 20 Q2 14 8 14 H22 L26 10 H8 Q2 10 2 16Z" fill="${fColorLight}"/>
+        </svg>
+      </div>
+      <div class="folder-info" onclick="${isSortSelected?`cancelFolderSort()`:(multiSelectMode?`toggleItemSelect('folder_${f.id}')`:`openFolderIfAllowed('${f.id}')`)}">
+        <div class="folder-name">${f.name}</div>
+        <div class="folder-meta">${subCount ? subCount+' alt · ' : ''}${totalLinks} link</div>
+      </div>
+      <div class="folder-actions">
+        <button class="action-btn" title="${isFav ? 'Favoriden çıkar' : 'Favorile'}"
+          ontouchstart="event.stopPropagation()"
+          onclick="event.stopPropagation();toggleFolderFavorite('${f.id}')"
+          style="font-size:17px;color:${isFav ? '#ffd740' : 'var(--text2)'};">${isFav ? '★' : '☆'}</button>
+        <button class="action-btn" title="${hasPin ? 'Şifreli — değiştir' : 'Şifre koy'}"
+          ontouchstart="event.stopPropagation()"
+          onclick="event.stopPropagation();openFolderLock('${f.id}')"
+          style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1.5px solid ${lockColor}55;background:${lockColor}15;">
+          ${lockIcon}
+        </button>
+        <button class="action-btn" title="Seçenekler"
+          ontouchstart="event.stopPropagation()"
+          onclick="event.stopPropagation();openFolderActions('${f.id}')"
+          style="color:var(--text2);font-size:18px;letter-spacing:1px;">⋮</button>
+      </div>
+    </div>`;
+}
+
+function countAllLinks(folderId) {
+  if (folderId === FAVORITES_ID) return links.filter(l => l.favorite).length;
+  if (folderId === TRASH_ID) return links.filter(l => l.folderId === TRASH_ID).length;
+  let count = getFolderLinks(folderId).length;
+  getSubFolders(folderId).forEach(sub => { count += countAllLinks(sub.id); });
+  return count;
+}
+
+function renderLinkCard(link, isTrashView) {
+  const isSelected = selectedItems.has('link_' + link.id);
+  const favicon = getFavicon(link.url);
+  const folder = getFolderById(link.folderId);
+  const isSortSelected = sortSelectedId === link.id;
+  const inTrash = isTrashView || link.folderId === TRASH_ID;
+  return `
+    <div class="link-card ${isSelected?'selected':''} ${isSortSelected?'sort-selected':''}" id="lc-${link.id}"
+      ontouchstart="linkLongPressStart(event,'${link.id}')"
+      ontouchend="linkLongPressEnd()"
+      ontouchmove="linkLongPressCancel()">
+      <div class="link-card-top">
+        <div class="link-checkbox ${multiSelectMode?'visible':''} ${isSelected?'checked':''}"
+          onclick="toggleItemSelect('link_${link.id}')">
+          ${isSelected?'✓':''}
+        </div>
+        ${isSortSelected ? `
+        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
+          <button class="sort-btn" onclick="moveLinkUp('${link.id}')">▲</button>
+          <button class="sort-btn" onclick="moveLinkDown('${link.id}')">▼</button>
+        </div>` : ''}
+        <div class="link-favicon" onclick="${multiSelectMode?`toggleItemSelect('link_${link.id}')`:`openLink('${link.url}')`}">
+          ${favicon?`<img src="${favicon}" onerror="this.parentElement.innerHTML='🔗'">` :'🔗'}
+        </div>
+        <div class="link-info" onclick="${isSortSelected?`cancelSortSelect()`:(multiSelectMode?`toggleItemSelect('link_${link.id}')`:`openLink('${link.url}')`)}">
+          <div class="link-title">${link.title||getDomain(link.url)}</div>
+          <div class="link-url">${link.url.replace(/^https?:\/\//,'')}</div>
+          ${(currentFolderId === FAVORITES_ID && folder) ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;opacity:0.8;">📁 ${folder.name}</div>` : ''}
+          ${link.note ? `<div style="font-size:11px;color:var(--accent);opacity:0.8;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(232,255,71,0.07);border-radius:6px;padding:2px 7px;display:inline-block;max-width:100%;">📝 ${link.note}</div>` : ''}
+          ${inTrash && link._trashDate ? `<div style="font-size:11px;color:#ef535088;margin-top:4px;">🗑 ${new Date(link._trashDate).toLocaleDateString('tr-TR')}</div>` : ''}
+        </div>
+        ${inTrash ? `
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+          <button class="action-btn" onclick="event.stopPropagation();restoreFromTrash('${link.id}')" style="font-size:11px;color:#4caf50;font-weight:700;white-space:nowrap;" title="Geri Yükle">↩</button>
+          <button class="action-btn" onclick="event.stopPropagation();confirmPermanentDelete('${link.id}')" style="font-size:11px;color:var(--danger);font-weight:700;" title="Kalıcı Sil">✕</button>
+        </div>` : `
+        <button class="action-btn btn-star" ontouchstart="event.stopPropagation()" onclick="event.stopPropagation();toggleFavorite('${link.id}')" style="color:${link.favorite?'#ffd700':'var(--text2)'};">${link.favorite?'★':'☆'}</button>
+        <button class="action-btn" ontouchstart="event.stopPropagation()" onclick="event.stopPropagation();openLinkActions('${link.id}')" style="color:var(--text2);font-size:18px;letter-spacing:1px;">⋮</button>`}
+      </div>
+    </div>`;
+}
+
+function updateCount() {
+  document.getElementById('countBadge') && (document.getElementById('countBadge').textContent = `${links.length} link`);
+}
+
+// ===== MULTI SELECT =====
+let multiSelectMode = false;
+let selectedItems = new Set(); // 'folder_ID' or 'link_ID'
+
+function toggleItemSelect(key) {
+  if (!multiSelectMode) {
+    multiSelectMode = true;
+    document.getElementById('multibar').classList.add('visible');
+  }
+  if (selectedItems.has(key)) selectedItems.delete(key);
+  else selectedItems.add(key);
+  updateMultibar();
+  renderContent();
+}
+
+function updateMultibar() {
+  document.getElementById('multibarInfo').textContent = `${selectedItems.size} seçildi`;
+  const subFolders = getSubFolders(currentFolderId);
+  const folderLinks = currentFolderId === 'favorites'
+    ? links.filter(l => l.favorite)
+    : (currentFolderId ? getFolderLinks(currentFolderId) : links);
+  const allKeys = [
+    ...subFolders.map(f => 'folder_' + f.id),
+    ...folderLinks.map(l => 'link_' + l.id)
+  ];
+  const allSelected = allKeys.length > 0 && allKeys.every(k => selectedItems.has(k));
+  const chk = document.getElementById('selectAllCheck');
+  if (chk) {
+    chk.style.background = allSelected ? '#4caf50' : 'transparent';
+    chk.style.borderColor = '#4caf50';
+    chk.style.color = '#fff';
+    chk.textContent = allSelected ? '✓' : '';
+  }
+}
+
+function selectAllVisible() {
+  const subFolders = getSubFolders(currentFolderId);
+  const folderLinks = currentFolderId ? getFolderLinks(currentFolderId) : [];
+  subFolders.forEach(f => selectedItems.add('folder_' + f.id));
+  folderLinks.forEach(l => selectedItems.add('link_' + l.id));
+  if (!multiSelectMode) {
+    multiSelectMode = true;
+    document.getElementById('multibar').classList.add('visible');
+  }
+  updateMultibar();
+  renderContent();
+}
+
+function toggleSelectAll() {
+  const subFolders = getSubFolders(currentFolderId);
+  const folderLinks = currentFolderId === 'favorites'
+    ? links.filter(l => l.favorite)
+    : (currentFolderId ? getFolderLinks(currentFolderId) : links);
+  const allKeys = [
+    ...subFolders.map(f => 'folder_' + f.id),
+    ...folderLinks.map(l => 'link_' + l.id)
+  ];
+  const allSelected = allKeys.every(k => selectedItems.has(k));
+  if (allSelected) {
+    allKeys.forEach(k => selectedItems.delete(k));
+  } else {
+    allKeys.forEach(k => selectedItems.add(k));
+  }
+  updateMultibar();
+  renderContent();
+}
+
+async function shareSelected() {
+  const linkIds = [...selectedItems].filter(k => k.startsWith('link_')).map(k => k.slice(5));
+  if (!linkIds.length) { showToast('⚠️ Önce link seç'); return; }
+  const selectedLinks = linkIds.map(id => links.find(l => l.id === id)).filter(Boolean);
+  const text = selectedLinks.map(l => `${l.title || getDomain(l.url)}\n${l.url}`).join('\n\n');
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  if (navigator.share) {
+    try { await navigator.share({ text }); return; } catch(e) {}
+  }
+  showToast(`⎘ ${linkIds.length} link kopyalandı!`);
+}
+
+function cancelMultiSelect() {
+  multiSelectMode = false;
+  selectedItems.clear();
+  sortSelectedId = null;
+  sortSelectedFolderId = null;
+  document.getElementById('multibar').classList.remove('visible');
+  renderContent();
+}
+
+function deleteSelected() {
+  const linkIds = [...selectedItems].filter(k=>k.startsWith('link_')).map(k=>k.slice(5));
+  const folderIds = [...selectedItems].filter(k=>k.startsWith('folder_')).map(k=>k.slice(7));
+  const total = linkIds.length + folderIds.length;
+  showConfirm(
+    '🗑',
+    'Çöpe Taşı',
+    `${total} öğe (${linkIds.length} link, ${folderIds.length} klasör) çöp kutusuna taşınacak.`,
+    () => {
+      linkIds.forEach(id => moveToTrash_link(id));
+      folderIds.forEach(id => moveToTrash_folder(id));
+      save(); cancelMultiSelect(); render(); showToast('🗑 Çöpe taşındı');
+    },
+    'Çöpe Taşı'
+  );
+}
+
+function deleteRecursive(folderId) {
+  // Alt klasörleri de çöpe taşı
+  getSubFolders(folderId).forEach(sub => moveToTrash_folder(sub.id));
+  // Linkleri çöpe taşı
+  links.filter(l => l.folderId === folderId).forEach(l => moveToTrash_link(l.id));
+  folders = folders.filter(f => f.id !== folderId);
+}
+
+function moveToTrash_link(id) {
+  const l = links.find(x => x.id === id);
+  if (!l) return;
+  l._trashDate = Date.now();
+  l._origFolderId = l.folderId;
+  l.folderId = TRASH_ID;
+}
+
+function moveToTrash_folder(folderId) {
+  getSubFolders(folderId).forEach(sub => moveToTrash_folder(sub.id));
+  links.filter(l => l.folderId === folderId).forEach(l => moveToTrash_link(l.id));
+  // Klasörü çöp klasörüne "sanal" olarak bırak — aslında silelim ama linkleri çöpe taşıdık
+  folders = folders.filter(f => f.id !== folderId);
+}
+
+// ===== MOVE =====
+let moveMode = null; // 'links' | 'folder_as_sub'
+let moveFolderIds = [];
+let moveLinkIds = [];
+let moveTargetId = null;
+
+function openMoveModal() {
+  moveMode = 'links';
+  moveLinkIds = [...selectedItems].filter(k=>k.startsWith('link_')).map(k=>k.slice(5));
+  moveFolderIds = [...selectedItems].filter(k=>k.startsWith('folder_')).map(k=>k.slice(7));
+  if (!moveLinkIds.length && !moveFolderIds.length) { showToast('⚠️ Önce seçim yap'); return; }
+  moveTargetId = null;
+  document.getElementById('moveModalSub').textContent =
+    `${moveLinkIds.length} link, ${moveFolderIds.length} klasör taşınacak`;
+  renderMoveCatList(true);
+  document.getElementById('moveModal').classList.add('open');
+}
+
+function moveFolderAsSubfolder() {
+  const checked = [...selectedFoldersMgr];
+  if (!checked.length) { showToast('⚠️ Klasör seç'); return; }
+  moveMode = 'folder_as_sub';
+  moveFolderIds = checked;
+  moveTargetId = null;
+  document.getElementById('moveModalSub').textContent =
+    `${checked.length} klasör, seçilen klasörün altına taşınacak`;
+  renderMoveCatList(false);
+  document.getElementById('moveModal').classList.add('open');
+}
+
+function renderMoveCatList(includeRoot) {
+  // Always show Ana Sayfa so folders can be moved back to root
+  let html = `<div class="move-opt ${moveTargetId===null?'selected':''}" onclick="selectMoveTarget(null)">
+    <span style="font-size:18px;">🏠</span>
+    <span style="font-size:14px;">Ana Sayfa (Kök)</span>
+    ${moveTargetId===null?'<span style="margin-left:auto;color:var(--accent);">✓</span>':''}
+  </div>`;
+  const excluded = new Set(moveFolderIds);
+  folders.filter(f => !excluded.has(f.id)).forEach(f => {
+    html += `<div class="move-opt ${moveTargetId===f.id?'selected':''}" onclick="selectMoveTarget('${f.id}')">
+      <span style="font-size:18px;">📁</span>
+      <span style="font-size:14px;">${getFolderPath(f.id)}</span>
+      ${moveTargetId===f.id?'<span style="margin-left:auto;color:var(--accent);">✓</span>':''}
+    </div>`;
+  });
+  document.getElementById('moveCatList').innerHTML = html;
+}
+
+function getFolderPath(id) {
+  const parts = [];
+  let cur = getFolderById(id);
+  while (cur) {
+    parts.unshift(cur.name);
+    cur = cur.parentId ? getFolderById(cur.parentId) : null;
+  }
+  return parts.join(' › ');
+}
+
+function selectMoveTarget(id) {
+  moveTargetId = id;
+  renderMoveCatList(moveMode === 'links');
+}
+
+function confirmMove() {
+  if (moveTargetId === undefined) { showToast('⚠️ Hedef seç'); return; }
+
+  if (moveMode === 'links') {
+    moveLinkIds.forEach(id => {
+      const l = links.find(x => x.id === id);
+      if (l) l.folderId = moveTargetId;
+    });
+    moveFolderIds.forEach(id => {
+      const f = getFolderById(id);
+      if (f) f.parentId = moveTargetId;
+    });
+    save(); cancelMultiSelect();
+    document.getElementById('moveModal').classList.remove('open');
+    showToast('✓ Taşındı!');
+  } else if (moveMode === 'folder_as_sub') {
+    moveFolderIds.forEach(id => {
+      const f = getFolderById(id);
+      if (f) f.parentId = moveTargetId;
+    });
+    selectedFoldersMgr.clear();
+    save();
+    document.getElementById('moveModal').classList.remove('open');
+    renderCatManage();
+    render();
+    showToast('✓ Alt klasöre taşındı!');
+  }
+}
+
+// ===== FOLDER MANAGER =====
+let selectedFoldersMgr = new Set();
+
+function renderCatManage() {
+  function renderLevel(parentId, depth) {
+    return folders.filter(f => f.parentId === parentId).map(f => {
+      const linkCount = countAllLinks(f.id);
+      const checked = selectedFoldersMgr.has(f.id);
+      return `
+        <div class="folder-mgr-item" style="margin-left:${depth*14}px;">
+          <div class="fld-check ${checked?'checked':''}" onclick="toggleFolderMgr('${f.id}')">
+            ${checked?'✓':''}
+          </div>
+          <div style="flex:1;">
+            <div class="fld-name">📁 ${f.name}</div>
+            <div class="fld-sub">${linkCount} link · ${getSubFolders(f.id).length} alt klasör</div>
+          </div>
+          <button class="fld-btn" style="color:var(--text2);" onclick="renameFolder('${f.id}')">✎</button>
+          <button class="fld-btn" style="color:var(--danger);" onclick="confirmDeleteFolder('${f.id}')">✕</button>
+        </div>
+        ${renderLevel(f.id, depth+1)}`;
+    }).join('');
+  }
+  document.getElementById('catManageList').innerHTML = renderLevel(null, 0) ||
+    '<div class="section-sub">Henüz klasör yok</div>';
+}
+
+function toggleFolderMgr(id) {
+  if (selectedFoldersMgr.has(id)) selectedFoldersMgr.delete(id);
+  else selectedFoldersMgr.add(id);
+  renderCatManage();
+}
+
+function selectAllFolders() {
+  const visibleIds = folders.filter(f => f.id !== 'favorites').map(f => f.id);
+  const allSelected = visibleIds.every(id => selectedFoldersMgr.has(id));
+  if (allSelected) {
+    selectedFoldersMgr.clear();
+    const btn = document.getElementById('selectAllFoldersBtn');
+    if (btn) btn.textContent = '☐ Tümünü Seç';
+  } else {
+    visibleIds.forEach(id => selectedFoldersMgr.add(id));
+    const btn = document.getElementById('selectAllFoldersBtn');
+    if (btn) btn.textContent = '☑ Seçimi Kaldır';
+  }
+  renderCatManage();
+}
+
+function addCategory() {
+  const input = document.getElementById('newCatInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (folders.some(f => f.name === name && f.parentId === currentFolderId)) {
+    showToast('⚠️ Bu isim zaten var'); return;
+  }
+  folders.push({id:uid(), name, parentId: currentFolderId});
+  save(); renderCatManage(); render();
+  input.value = '';
+  showToast('📁 Klasör eklendi!');
+}
+
+function renameFolder(id) {
+  const f = getFolderById(id);
+  if (!f) return;
+  const newName = prompt(`"${f.name}" klasörünün yeni adı:`, f.name);
+  if (!newName || newName === f.name) return;
+  f.name = newName;
+  save(); renderCatManage(); render();
+  showToast(`✓ "${newName}" olarak değiştirildi`);
+}
+
+function confirmDeleteFolder(id) {
+  const f = getFolderById(id);
+  const total = countAllLinks(id);
+  const subCount = getSubFolders(id).length;
+  showConfirm(
+    '🗑',
+    `"${f.name}" Çöpe Taşınsın mı?`,
+    `Bu klasör${subCount ? ', '+subCount+' alt klasör' : ''} ve ${total} link çöp kutusuna taşınacak.`,
+    () => {
+      moveToTrash_folder(id);
+      save(); renderCatManage(); render();
+      showToast('🗑 Çöpe taşındı');
+    },
+    'Çöpe Taşı'
+  );
+}
+
+function deleteSelectedFolders() {
+  if (!selectedFoldersMgr.size) { showToast('⚠️ Klasör seç'); return; }
+  const total = [...selectedFoldersMgr].reduce((s,id) => s + countAllLinks(id), 0);
+  showConfirm(
+    '🗑',
+    `${selectedFoldersMgr.size} Klasör Çöpe Taşınsın mı?`,
+    `Seçili klasörler ve içindeki ${total} link çöp kutusuna taşınacak.`,
+    () => {
+      [...selectedFoldersMgr].forEach(id => moveToTrash_folder(id));
+      selectedFoldersMgr.clear();
+      save(); renderCatManage(); render();
+      showToast('🗑 Çöpe taşındı');
+    },
+    'Çöpe Taşı'
+  );
+}
+
+function openCatModal() {
+  selectedFoldersMgr.clear();
+  renderCatManage();
+  document.getElementById('catModal').classList.add('open');
+}
+
+// ===== ADD / EDIT LINK =====
+let editingLinkId = null;
+
+function renderModalCats(selectedId) {
+  function renderOpts(parentId, depth) {
+    return folders.filter(f => f.parentId === parentId).map(f => {
+      const path = '  '.repeat(depth) + (depth ? '└ ' : '') + f.name;
+      const sel = f.id === selectedId;
+      return `<div class="cat-option ${sel?'selected':''}" data-id="${f.id}" onclick="selectCat(this)">${path}</div>
+              ${renderOpts(f.id, depth+1)}`;
+    }).join('');
+  }
+  document.getElementById('modalCatSelect').innerHTML = renderOpts(null, 0);
+}
+
+function openAddLinkModal() {
+  editingLinkId = null;
+  document.getElementById('linkModalTitle').innerHTML = 'Yeni <span>Link</span> Ekle';
+  document.getElementById('linkSaveBtn').innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Kaydet`;
+  document.getElementById('urlInput').value = '';
+  document.getElementById('titleInput').value = '';
+  document.getElementById('urlHint').style.display = 'none';
+  renderModalCats(currentFolderId);
+  // Pre-select current folder
+  const opts = document.querySelectorAll('#modalCatSelect .cat-option');
+  opts.forEach(o => { if (o.dataset.id === currentFolderId) o.classList.add('selected'); });
+  document.getElementById('linkModal').classList.add('open');
+  setTimeout(async () => {
+    const input = document.getElementById('urlInput');
+    if (!input.value) {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+          input.value = text;
+          document.getElementById('urlHint').style.display = 'block';
+          showToast('📋 Otomatik yapıştırıldı!');
+        }
+      } catch {}
+    }
+  }, 200);
+}
+
+function editLink(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  editingLinkId = id;
+  document.getElementById('linkModalTitle').innerHTML = 'Linki <span>Düzenle</span>';
+  document.getElementById('linkSaveBtn').innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Güncelle`;
+  document.getElementById('urlInput').value = link.url;
+  document.getElementById('titleInput').value = link.title || '';
+  document.getElementById('noteInput').value = link.note || '';
+  document.getElementById('urlHint').style.display = 'block';
+  renderModalCats(link.folderId);
+  document.getElementById('linkModal').classList.add('open');
+}
+
+function selectCat(el) {
+  document.querySelectorAll('.cat-option').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function tryAutoPaste() {
+  const input = document.getElementById('urlInput');
+  if (input.value) return;
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+      input.value = text;
+      document.getElementById('urlHint').style.display = 'block';
+      showToast('📋 Otomatik yapıştırıldı!');
+    }
+  } catch {}
+}
+
+function checkUrlInput() {
+  const val = document.getElementById('urlInput').value;
+  document.getElementById('urlHint').style.display =
+    (val.startsWith('http://') || val.startsWith('https://')) ? 'block' : 'none';
+}
+
+function saveLink() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { showToast('⚠️ URL gir!'); return; }
+  const finalUrl = url.startsWith('http') ? url : 'https://' + url;
+  const title = document.getElementById('titleInput').value.trim();
+  const note = document.getElementById('noteInput').value.trim();
+  const catEl = document.querySelector('#modalCatSelect .cat-option.selected');
+  const folderId = catEl ? catEl.dataset.id : (currentFolderId || folders[0]?.id || null);
+
+  if (editingLinkId) {
+    // Düzenleme modunda — duplicate kontrolü yok
+    const link = links.find(l => l.id === editingLinkId);
+    if (link) { link.url = finalUrl; link.title = title || getDomain(finalUrl); link.folderId = folderId; link.note = note; }
+    showToast('✓ Güncellendi!');
+    save(); updateCount(); render();
+    document.getElementById('linkModal').classList.remove('open');
+    editingLinkId = null;
+    return;
+  }
+
+  // Yeni link — duplicate URL kontrolü
+  const existing = links.filter(l => l.url === finalUrl || l.url === url);
+  if (existing.length > 0) {
+    // Duplicate uyarı modalı aç
+    _dupPending = { url: finalUrl, title, note, folderId };
+    openDupModal(existing, finalUrl, title, folderId);
+    return;
+  }
+
+  // Duplicate yok — direkt kaydet
+  doSaveLink(finalUrl, title, note, folderId);
+}
+
+// Pending duplicate kayıt bilgisi
+let _dupPending = null;
+let _dupSelectedFolderId = null;
+
+function openDupModal(existing, url, title, defaultFolderId) {
+  // Mevcut kayıtları göster
+  const existList = document.getElementById('dupExistingList');
+  existList.innerHTML = existing.map(l => {
+    const folder = getFolderById(l.folderId);
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:20px;flex-shrink:0;">${getFavicon(l.url) ? `<img src="${getFavicon(l.url)}" style="width:22px;height:22px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='🔗'">` : '🔗'}</div>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.title || getDomain(l.url)}</div>
+        <div style="font-size:11px;color:var(--text2);">📁 ${folder?.name || 'Ana Sayfa'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Klasör listesi — seçilebilir
+  _dupSelectedFolderId = defaultFolderId;
+  renderDupFolderList();
+
+  document.getElementById('linkModal').classList.remove('open');
+  setTimeout(() => document.getElementById('dupLinkModal').classList.add('open'), 150);
+}
+
+function renderDupFolderList() {
+  const container = document.getElementById('dupFolderList');
+  const allFolders = folders.filter(f => f.id !== 'favorites');
+
+  let html = `<div class="dup-folder-opt ${_dupSelectedFolderId === null ? 'selected' : ''}" onclick="selectDupFolder(null, this)"
+    style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--surface2);border-radius:11px;cursor:pointer;transition:all 0.15s;border:1.5px solid ${_dupSelectedFolderId === null ? 'var(--accent)' : 'transparent'};">
+    <span style="font-size:18px;">🏠</span>
+    <span style="font-size:14px;font-weight:500;">Ana Sayfa (Klasörsüz)</span>
+  </div>`;
+
+  allFolders.forEach(f => {
+    const isSelected = _dupSelectedFolderId === f.id;
+    const indent = getDepth(f.id);
+    html += `<div class="dup-folder-opt ${isSelected ? 'selected' : ''}" onclick="selectDupFolder('${f.id}', this)"
+      style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--surface2);border-radius:11px;cursor:pointer;transition:all 0.15s;border:1.5px solid ${isSelected ? 'var(--accent)' : 'transparent'};margin-left:${Math.min(indent,3)*14}px;">
+      <span style="font-size:18px;">📁</span>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.name}</div>
+        ${indent > 0 ? `<div style="font-size:11px;color:var(--text2);">Alt klasör</div>` : ''}
+      </div>
+      ${isSelected ? '<span style="color:var(--accent);font-size:16px;">✓</span>' : ''}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function getDepth(folderId) {
+  let depth = 0, f = getFolderById(folderId);
+  while (f && f.parentId) { depth++; f = getFolderById(f.parentId); if (depth > 10) break; }
+  return depth;
+}
+
+function selectDupFolder(fid, el) {
+  _dupSelectedFolderId = fid;
+  renderDupFolderList();
+}
+
+function closeDupModal() {
+  document.getElementById('dupLinkModal').classList.remove('open');
+  _dupPending = null;
+  _dupSelectedFolderId = null;
+}
+
+function confirmDupSave() {
+  if (!_dupPending) return;
+  doSaveLink(_dupPending.url, _dupPending.title, _dupPending.note, _dupSelectedFolderId);
+  document.getElementById('dupLinkModal').classList.remove('open');
+  _dupPending = null;
+  _dupSelectedFolderId = null;
+}
+
+function doSaveLink(url, title, note, folderId) {
+  links.unshift({
+    id: uid(),
+    url,
+    title: title || getDomain(url),
+    folderId,
+    note,
+    date: new Date().toLocaleDateString('tr-TR'),
+    time: new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})
+  });
+  showToast('✓ Kaydedildi!', 'success');
+  save(); updateCount(); render();
+  document.getElementById('linkModal').classList.remove('open');
+  editingLinkId = null;
+}
+
+function confirmDeleteLink(id) {
+  const link = links.find(l => l.id === id);
+  // Zaten çöpteyse kalıcı sil onayı
+  if (link?.folderId === TRASH_ID) {
+    showConfirm('🗑', 'Kalıcı Silinsin mi?', `"${link?.title || getDomain(link?.url || '')}" kalıcı olarak silinecek. Bu işlem geri alınamaz!`,
+      () => { links = links.filter(l => l.id !== id); save(); updateCount(); render(); showToast('🗑 Silindi'); }
+    );
+    return;
+  }
+  // Çöpte değilse çöpe taşı onayı
+  showConfirm('🗑', 'Çöpe Taşı', `"${link?.title || getDomain(link?.url || '')}" çöp kutusuna taşınacak.`,
+    () => { moveToTrash_link(id); save(); updateCount(); render(); showToast('🗑 Çöpe taşındı'); },
+    'Çöpe Taşı'
+  );
+}
+
+// ===== COPY (fixed) =====
+function copyLink(e, url) {
+  e.stopPropagation();
+  // Create temp textarea for reliable copy across browsers
+  const ta = document.createElement('textarea');
+  ta.value = url;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast('⎘ Kopyalandı!');
+  } catch {
+    navigator.clipboard.writeText(url).then(() => showToast('⎘ Kopyalandı!'));
+  }
+  document.body.removeChild(ta);
+}
+
+function openLink(url) { window.open(url, '_blank'); }
+
+function getDomain(url) {
+  try { return new URL(url).hostname.replace('www.', ''); } catch { return url; }
+}
+
+function getFavicon(url) {
+  try { return `https://www.google.com/s2/favicons?domain=${new URL(url).origin}&sz=64`; } catch { return null; }
+}
+
+// ===== CONFIRM MODAL =====
+let confirmCallback = null;
+function showConfirm(icon, title, msg, cb, okLabel) {
+  document.getElementById('confirmIcon').textContent = icon;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOkBtn').textContent = okLabel || 'Onayla';
+  document.getElementById('confirmOkBtn').style.background = okLabel === 'Taşı' ? 'var(--accent)' : 'var(--danger)';
+  document.getElementById('confirmOkBtn').style.color = okLabel === 'Taşı' ? '#000' : '#fff';
+  confirmCallback = cb;
+  document.getElementById('confirmModal').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.remove('open');
+  confirmCallback = null;
+}
+document.getElementById('confirmOkBtn').onclick = () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+};
+
+// ===== EXPORT =====
+function openExportModal() {
+  const list = document.getElementById('exportCatList');
+  list.innerHTML = folders.filter(f => f.parentId === null).map(f => {
+    const count = countAllLinks(f.id);
+    return `<div class="export-opt" onclick="exportSingle('${f.id}')">
+      <div>
+        <div style="font-size:14px;font-weight:500;">📁 ${f.name}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${count} link</div>
+      </div>
+      <span style="color:var(--text2);">›</span>
+    </div>`;
+  }).join('');
+  document.getElementById('exportModal').classList.add('open');
+}
+
+function buildExportHTML(title, linkList) {
+  // Group by folder path
+  const byFolder = {};
+  linkList.forEach(l => {
+    const path = getFolderPath(l.folderId) || 'Genel';
+    if (!byFolder[path]) byFolder[path] = [];
+    byFolder[path].push(l);
+  });
+  let body = '';
+  Object.keys(byFolder).sort().forEach(path => {
+    body += `<h2>📁 ${path}</h2><ul>`;
+    byFolder[path].forEach(l => {
+      body += `<li><a href="${l.url}" target="_blank">${l.title||l.url}</a><span class="domain">${getDomain(l.url)}</span></li>`;
+    });
+    body += `</ul>`;
+  });
+  return `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>${title}</title>
+<style>body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#f0f0f0;max-width:800px;margin:0 auto;padding:30px 20px;}
+h1{font-size:26px;margin-bottom:6px;}h1 span{color:#e8ff47;}.meta{color:#888;font-size:13px;margin-bottom:30px;}
+h2{font-size:15px;color:#e8ff47;margin:24px 0 10px;border-bottom:1px solid #2a2a2a;padding-bottom:8px;}
+ul{list-style:none;padding:0;}li{padding:10px 14px;background:#141414;border-radius:10px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
+a{color:#f0f0f0;text-decoration:none;font-size:14px;}a:hover{color:#e8ff47;}.domain{color:#555;font-size:12px;}</style></head>
+<body><h1>Vault<span>mark</span></h1>
+<div class="meta">Dışa aktarma: ${new Date().toLocaleDateString('tr-TR')} — ${linkList.length} link</div>
+${body}</body></html>`;
+}
+
+// ===== EXPORT SAVE MODAL =====
+let _exportSaveMode = 'all'; // 'all' | folderId
+let _exportDirMode = 'default'; // 'default' | 'custom'
+let _exportDirHandle = null; // FileSystemDirectoryHandle
+
+function openExportSaveModal(mode) {
+  _exportSaveMode = mode;
+  _exportDirMode = 'default';
+  _exportDirHandle = null;
+
+  // Varsayılan dosya adı oluştur
+  let defaultName;
+  if (mode === 'all') {
+    defaultName = `vaultmark_yedek_${today()}`;
+  } else {
+    const f = getFolderById(mode);
+    defaultName = `vaultmark_${(f?.name||'klasor').toLowerCase().replace(/[^a-z0-9]/g,'_')}_${today()}`;
+  }
+  document.getElementById('exportFileName').value = defaultName;
+
+  // Dizin seçimini sıfırla
+  selectExportDir('default');
+
+  // Diğer modalleri kapat
+  document.getElementById('exportModal').classList.remove('open');
+  document.getElementById('settingsModal').classList.remove('open');
+  document.getElementById('exportSaveModal').classList.add('open');
+}
+
+function selectExportDir(mode) {
+  _exportDirMode = mode;
+  const defCard = document.getElementById('exportDirDefault');
+  const cusCard = document.getElementById('exportDirCustom');
+  const defCheck = document.getElementById('exportDirDefaultCheck');
+  const cusCheck = document.getElementById('exportDirCustomCheck');
+
+  if (mode === 'default') {
+    defCard.style.borderColor = 'var(--accent)';
+    cusCard.style.borderColor = 'var(--border)';
+    defCheck.style.background = 'var(--accent)';
+    defCheck.style.color = '#000';
+    defCheck.textContent = '✓';
+    cusCheck.style.background = 'var(--border)';
+    cusCheck.style.color = 'var(--text2)';
+    cusCheck.textContent = '○';
+    document.getElementById('exportDirCustomLabel').textContent = 'Kayıt yeri seçmek için dokun';
+  } else {
+    // showSaveFilePicker ile hem klasör hem isim seç
+    if ('showSaveFilePicker' in window) {
+      const currentName = (document.getElementById('exportFileName').value.trim() || 'vaultmark_yedek');
+      const safeName = currentName.endsWith('.html') ? currentName : currentName + '.html';
+      window.showSaveFilePicker({
+        suggestedName: safeName,
+        types: [{ description: 'HTML Dosyası', accept: { 'text/html': ['.html'] } }]
+      }).then(handle => {
+        _exportDirHandle = handle;
+        _exportDirMode = 'custom';
+        defCard.style.borderColor = 'var(--border)';
+        cusCard.style.borderColor = 'var(--accent)';
+        defCheck.style.background = 'var(--border)';
+        defCheck.style.color = 'var(--text2)';
+        defCheck.textContent = '○';
+        cusCheck.style.background = 'var(--accent)';
+        cusCheck.style.color = '#000';
+        cusCheck.textContent = '✓';
+        // Seçilen dosya adını input'a yaz
+        document.getElementById('exportFileName').value = handle.name.replace(/\.html$/i, '');
+        document.getElementById('exportDirCustomLabel').textContent = `📄 ${handle.name}`;
+      }).catch(() => {
+        selectExportDir('default');
+      });
+    } else {
+      showToast('⚠️ Bu tarayıcı klasör seçimini desteklemiyor');
+      selectExportDir('default');
+    }
+  }
+}
+
+async function confirmExportSave() {
+  let fileName = (document.getElementById('exportFileName').value.trim() || 'vaultmark_yedek');
+  if (!fileName.endsWith('.html')) fileName += '.html';
+
+  let html;
+  if (_exportSaveMode === 'all') {
+    html = buildExportHTML('Vaultmark - Tüm Linkler', links);
+  } else {
+    function collectLinks(id) {
+      let res = getFolderLinks(id);
+      getSubFolders(id).forEach(sub => { res = res.concat(collectLinks(sub.id)); });
+      return res;
+    }
+    const f = getFolderById(_exportSaveMode);
+    html = buildExportHTML(`Vaultmark - ${f?.name || ''}`, collectLinks(_exportSaveMode));
+  }
+
+  // Özel konum: showSaveFilePicker ile seçilmiş FileSystemFileHandle
+  if (_exportDirMode === 'custom' && _exportDirHandle) {
+    try {
+      const writable = await _exportDirHandle.createWritable();
+      await writable.write(new Blob([html], { type: 'text/html;charset=utf-8' }));
+      await writable.close();
+      document.getElementById('exportSaveModal').classList.remove('open');
+      showToast(`✅ ${_exportDirHandle.name} kaydedildi`);
+      return;
+    } catch (e) {
+      console.error('Export hatası:', e);
+      showConfirm('⚠️', 'Kaydedilemedi',
+        `Seçilen konuma kaydedilemedi. Varsayılan İndirmeler klasörüne kaydedelim mi?`,
+        () => { dlHTML(fileName, html); document.getElementById('exportSaveModal').classList.remove('open'); },
+        'Evet, İndir'
+      );
+      return;
+    }
+  }
+
+  // Varsayılan: tarayıcı indirme
+  dlHTML(fileName, html);
+  document.getElementById('exportSaveModal').classList.remove('open');
+}
+
+function exportAll() {
+  openExportSaveModal('all');
+}
+
+function exportAllDirect() {
+  // Eski direkt export (exportSingle için hala kullanılıyor)
+  const html = buildExportHTML('Vaultmark - Tüm Linkler', links);
+  dlHTML(`vaultmark_yedek_${today()}.html`, html);
+}
+
+
+function exportSingle(folderId) {
+  openExportSaveModal(folderId);
+}
+
+function dlHTML(name, html) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], {type:'text/html;charset=utf-8'}));
+  a.download = name; a.click();
+  showToast('✓ İndirildi!');
+}
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+// ===== MODAL HELPERS =====
+function closeOnBg(e, id) {
+  if (e.target === document.getElementById(id)) {
+    document.getElementById(id).classList.remove('open');
+    if (id === 'settingsModal') closeThemePalette();
+    if (id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
+  }
+}
+
+
+// ===== TOAST =====
+function showToast(msg, type = 'default') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  // Renk türüne göre
+  if (type === 'error') {
+    t.style.background = '#ff4444';
+    t.style.color = '#fff';
+    t.style.boxShadow = '0 4px 20px rgba(255,68,68,0.3)';
+  } else if (type === 'success') {
+    t.style.background = '#4caf50';
+    t.style.color = '#fff';
+    t.style.boxShadow = '0 4px 20px rgba(76,175,80,0.3)';
+  } else {
+    t.style.background = 'var(--accent)';
+    t.style.color = '#000';
+    t.style.boxShadow = '0 4px 20px rgba(232,255,71,0.3)';
+  }
+  t.classList.add('show');
+  haptic('light');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== HAPTIC FEEDBACK =====
+function haptic(style = 'light') {
+  if (navigator.vibrate) {
+    const patterns = { light: [8], medium: [15], heavy: [25], error: [10, 50, 10] };
+    navigator.vibrate(patterns[style] || [8]);
+  }
+}
+
+// ===== RIPPLE EFFECT =====
+function addRipple(e, el) {
+  const rect = el.getBoundingClientRect();
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const size = Math.max(rect.width, rect.height);
+  r.style.cssText = `width:${size}px;height:${size}px;left:${(e.clientX||rect.left+rect.width/2)-rect.left-size/2}px;top:${(e.clientY||rect.top+rect.height/2)-rect.top-size/2}px`;
+  el.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+}
+
+// ===== SEARCH =====
+document.getElementById('searchInput').addEventListener('input', () => render());
+
+// ===== SWIPE TO DELETE =====
+function initSwipe(card, linkId) {
+  let startX = 0, curX = 0, swiping = false, threshold = 75;
+  card.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    swiping = true;
+    curX = 0;
+    card.style.transition = 'none';
+  }, { passive: true });
+  card.addEventListener('touchmove', e => {
+    if (!swiping) return;
+    curX = e.touches[0].clientX - startX;
+    if (Math.abs(curX) > 10) {
+      card.style.transform = `translateX(${Math.max(-120, Math.min(0, curX))}px)`;
+    }
+  }, { passive: true });
+  card.addEventListener('touchend', () => {
+    swiping = false;
+    card.style.transition = 'transform 0.25s ease';
+    if (curX < -threshold) {
+      haptic('medium');
+      card.style.transform = 'translateX(-100%)';
+      card.style.opacity = '0';
+      setTimeout(() => confirmDeleteLink(linkId), 250);
+    } else {
+      card.style.transform = 'translateX(0)';
+    }
+  });
+}
+
+// ===== DRAG AND DROP (Desktop + Touch) =====
+let dragSrcId = null;
+let touchDragId = null;
+let touchTimer = null;
+let isDragging = false;
+
+function dragStart(e, id) {
+  dragSrcId = id;
+
+  setTimeout(() => { const el = document.getElementById('fc-'+id); if(el) el.classList.add('dragging'); }, 0);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dragOver(e, id) {
+  if (id === dragSrcId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('drag-over'));
+  const el = document.getElementById('fc-'+id);
+  if (el) el.classList.add('drag-over');
+}
+
+function dragLeave(e, id) {
+  const el = document.getElementById('fc-'+id);
+  if (el) el.classList.remove('drag-over');
+}
+
+function dragDrop(e, targetId) {
+  e.preventDefault();
+  if (!dragSrcId || dragSrcId === targetId) return;
+  document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('drag-over','dragging'));
+  showDragDropMenu(dragSrcId, targetId);
+  dragSrcId = null;
+}
+
+function dragEnd(e) {
+  document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('dragging','drag-over'));
+}
+
+// Touch drag (long press)
+function touchStart(e, id) {
+  // Her dokunuşta önceki timer'ı temizle
+  clearTimeout(touchTimer);
+  isDragging = false;
+  touchDragId = null;
+
+  touchTimer = setTimeout(() => {
+    isDragging = true;
+    touchDragId = id;
+    const el = document.getElementById('fc-'+id);
+    if (el) el.classList.add('dragging');
+    // Titreşim geri bildirimi (destekleniyorsa)
+    if (navigator.vibrate) navigator.vibrate(50);
+    showToast('⠿ Sürükleniyor — parmağını kaldır');
+  }, 600);
+}
+
+function touchMove(e) {
+  if (!isDragging) {
+    clearTimeout(touchTimer);
+    return;
+  }
+  e.preventDefault();
+  const touch = e.touches[0];
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('drag-over'));
+  if (el) {
+    const card = el.closest('.folder-card');
+    if (card && card.id !== 'fc-'+touchDragId) card.classList.add('drag-over');
+  }
+}
+
+function touchEnd(e, id) {
+  clearTimeout(touchTimer);
+  if (!isDragging) return;
+
+  e.preventDefault();
+  isDragging = false;
+  const draggedId = touchDragId;
+  touchDragId = null;
+
+  document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('dragging','drag-over'));
+
+  // Taşıma menüsünü göster — tüm klasörler + kök seçeneğiyle
+  showTouchMoveMenu(draggedId);
+}
+
+function showDragDropMenu(srcId, targetId) {
+  const src = getFolderById(srcId);
+  const tgt = targetId ? getFolderById(targetId) : null;
+  const targetName = tgt ? `"${tgt.name}" klasörünün içine` : 'Ana Sayfa\'ya (Kök)';
+  showConfirm(
+    '📁',
+    'Klasörü Taşı',
+    `"${src.name}" klasörünü ${targetName} taşımak istiyor musunuz?`,
+    () => {
+      src.parentId = targetId || null;
+      save(); render();
+      showToast(`✓ "${src.name}" taşındı`);
+    },
+    'Taşı'
+  );
+}
+
+// ===== IMPORT FROM HTML =====
+// ===== IMPORT =====
+let _importParsed = null; // { links: [{url, title, folderPath}], folders: [...] }
+let _importDestFolderId = null; // null = kök dizin, string = klasör ID
+let _importFileName = null; // dosya adından türetilen klasör adı
+
+function prepareImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  // Dosya adından klasör adı üret (uzantıyı çıkar)
+  _importFileName = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim() || null;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = parseBookmarkHTML(ev.target.result);
+      _importParsed = parsed;
+      e.target.value = '';
+
+      // Dosya bilgisini göster
+      document.getElementById('importFileName').textContent = file.name;
+      document.getElementById('importFileStat').textContent = `${parsed.links.length} link, ${parsed.folderNames.length} klasör algılandı`;
+
+      // Hedef seçeneklerini oluştur
+      buildImportDestOptions();
+
+      // Export modalı kapat, import hedef modalı aç
+      document.getElementById('exportModal').classList.remove('open');
+      setTimeout(() => document.getElementById('importDestModal').classList.add('open'), 180);
+    } catch(err) {
+      showToast('⚠️ Dosya okunamadı', 'error');
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function buildImportDestOptions() {
+  const container = document.getElementById('importDestOptions');
+  _importDestFolderId = null; // default: kök
+
+  const rootFolders = folders.filter(f => f.parentId === null && f.id !== 'favorites');
+
+  let html = `
+    <div class="import-dest-opt selected" data-fid="root" onclick="selectImportDest('root', this)">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">🏠</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;">Kök Dizin</div>
+          <div style="font-size:12px;color:var(--text2);">Linkler klasörleriyle birlikte ana sayfaya eklenir</div>
+        </div>
+      </div>
+    </div>`;
+
+  rootFolders.forEach(f => {
+    html += `
+    <div class="import-dest-opt" data-fid="${f.id}" onclick="selectImportDest('${f.id}', this)">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">📁</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;">${f.name}</div>
+          <div style="font-size:12px;color:var(--text2);">Bu klasörün içine aktar</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function selectImportDest(fid, el) {
+  document.querySelectorAll('.import-dest-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  _importDestFolderId = fid === 'root' ? null : fid;
+}
+
+function confirmImport() {
+  if (!_importParsed) return;
+  try {
+    let imported = 0;
+    const baseParentId = _importDestFolderId; // null = kök, string = klasör ID
+
+    // Klasörsüz linkler için otomatik bir klasör oluştur
+    // (kök dizinde folderId:null linkler görünmez, bir klasöre koymalıyız)
+    let autoFolderId = null;
+    const hasRootlessLinks = _importParsed.links.some(item => !item.folderPath || item.folderPath.length === 0);
+    if (hasRootlessLinks) {
+      // Dosya adından veya timestamp'ten klasör adı üret
+      const autoName = _importFileName || ('İçe Aktarılan ' + new Date().toLocaleDateString('tr-TR'));
+      const existing = folders.find(f => f.name === autoName && f.parentId === baseParentId);
+      if (existing) {
+        autoFolderId = existing.id;
+      } else {
+        const newF = { id: uid(), name: autoName, parentId: baseParentId, color: null };
+        folders.push(newF);
+        autoFolderId = newF.id;
+      }
+    }
+
+    _importParsed.links.forEach(item => {
+      // Duplicate kontrolü
+      if (links.find(l => l.url === item.url)) return;
+
+      let folderId;
+
+      if (item.folderPath && item.folderPath.length > 0) {
+        // Klasör yolu varsa: hedef altında klasörleri oluştur/bul
+        let parentId = baseParentId;
+        for (const part of item.folderPath) {
+          const existing = folders.find(f => f.name === part && f.parentId === parentId);
+          if (existing) {
+            parentId = existing.id;
+          } else {
+            const newF = { id: uid(), name: part, parentId: parentId, color: null };
+            folders.push(newF);
+            parentId = newF.id;
+          }
+        }
+        folderId = parentId;
+      } else {
+        // Klasör yolu yok: otomatik klasöre koy
+        folderId = autoFolderId;
+      }
+
+      links.push({
+        id: uid(),
+        url: item.url,
+        title: item.title || item.url,
+        folderId: folderId,
+        date: new Date().toLocaleDateString('tr-TR'),
+        time: new Date().toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}),
+        note: '',
+        favorite: false
+      });
+      imported++;
+    });
+
+    save();
+    render();
+    document.getElementById('importDestModal').classList.remove('open');
+    if (imported > 0) {
+      showToast(`✓ ${imported} link aktarıldı!`, 'success');
+    } else {
+      showToast('ℹ️ Yeni link bulunamadı (zaten mevcut)', 'default');
+    }
+    _importParsed = null;
+    _importFileName = null;
+  } catch(err) {
+    console.error(err);
+    showToast('⚠️ Aktarma başarısız: ' + err.message, 'error');
+  }
+}
+
+function parseBookmarkHTML(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const result = { links: [], folderNames: [] };
+
+  // Yardımcı: href'i güvenli al (DOMParser .href'i normalize eder, getAttribute kullan)
+  function safeHref(a) {
+    const raw = a.getAttribute('href') || '';
+    return raw.trim();
+  }
+
+  function isValidUrl(url) {
+    return url && (url.startsWith('http://') || url.startsWith('https://'));
+  }
+
+  // --- FORMAT 1: Vaultmark kendi HTML formatı (h2 başlıklı) ---
+  const h2s = doc.querySelectorAll('h2');
+  if (h2s.length > 0) {
+    h2s.forEach(h2 => {
+      let folderName = h2.textContent.replace(/^📁\s*/, '').trim();
+      const parts = folderName.split(' › ');
+      const folderPath = parts.map(p => p.trim()).filter(Boolean);
+      if (folderPath.length && !result.folderNames.includes(folderPath[folderPath.length-1])) {
+        result.folderNames.push(folderPath[folderPath.length-1]);
+      }
+      let el = h2.nextElementSibling;
+      while (el && el.tagName !== 'H2') {
+        el.querySelectorAll('a').forEach(a => {
+          const url = safeHref(a);
+          if (isValidUrl(url)) {
+            result.links.push({ url, title: a.textContent.trim() || url, folderPath });
+          }
+        });
+        el = el.nextElementSibling;
+      }
+    });
+    if (result.links.length > 0) return result;
+  }
+
+  // --- FORMAT 2: Netscape / My Links formatı ---
+  // DL > (DT > H3 = klasör) veya (DT > A = link)
+  // DOMParser bazen DT'yi DL içine koyamaz, tüm a elementlerini DT bazlı tara
+  function walkDL(dl, path) {
+    if (!dl) return;
+    // DL'nin tüm child'larını ve siblings'larını tara
+    // My Links: <DL><p><DT><A>... şeklinde — p tag'ı arasında DT'ler var
+    const items = dl.querySelectorAll('dt');
+    items.forEach(dt => {
+      // Bu dt'nin parent'ı bu dl mi ya da bu dl'nin içi mi?
+      // Sadece doğrudan alt veya p > dt olanları al
+      const h3 = dt.querySelector('h3') || dt.querySelector('H3');
+      const a  = dt.querySelector('a')  || dt.querySelector('A');
+      if (h3 && !a) {
+        // Klasör
+        const name = h3.textContent.trim();
+        if (name && !result.folderNames.includes(name)) result.folderNames.push(name);
+        // Alt DL ara: DT'nin sonraki kardeşi veya h3'ün sonraki kardeşi
+        const nextSib = dt.nextElementSibling;
+        const subDL = (nextSib && nextSib.tagName === 'DL') ? nextSib : dt.querySelector('dl, DL');
+        if (subDL) walkDL(subDL, [...path, name]);
+      } else if (a) {
+        const url = safeHref(a);
+        if (isValidUrl(url)) {
+          result.links.push({ url, title: a.textContent.trim() || url, folderPath: [...path] });
+        }
+      }
+    });
+  }
+
+  const rootDL = doc.querySelector('dl, DL');
+  if (rootDL) {
+    // Önce klasörsüz düz DT > A linklerini say
+    const directLinks = rootDL.querySelectorAll('dt a, DT A');
+    if (directLinks.length > 0) {
+      // My Links / basit format: klasör yok, sadece linkler
+      const hasH3 = rootDL.querySelector('h3, H3');
+      if (!hasH3) {
+        // Tüm düz a'ları al
+        directLinks.forEach(a => {
+          const url = safeHref(a);
+          if (isValidUrl(url)) {
+            result.links.push({ url, title: a.textContent.trim() || url, folderPath: [] });
+          }
+        });
+        if (result.links.length > 0) return result;
+      }
+      // H3 varsa klasörlü Netscape formatı
+      walkDL(rootDL, []);
+      if (result.links.length > 0) return result;
+    }
+  }
+
+  // --- FORMAT 3: Son çare — sayfadaki tüm a'lar ---
+  doc.querySelectorAll('a').forEach(a => {
+    const url = safeHref(a);
+    if (isValidUrl(url) && !result.links.find(l => l.url === url)) {
+      result.links.push({ url, title: a.textContent.trim() || url, folderPath: [] });
+    }
+  });
+
+  return result;
+}
+
+function importFromHTML(e) { prepareImport(e); } // eski çağrılar için alias
+
+function showTouchMoveMenu(srcId) {
+  const src = getFolderById(srcId);
+  moveMode = 'folder_as_sub';
+  moveFolderIds = [srcId];
+  moveTargetId = undefined;
+  document.getElementById('moveModalSub').textContent = `"${src.name}" klasörünü nereye taşımak istiyorsunuz?`;
+  renderMoveCatList(true);
+  document.getElementById('moveModal').classList.add('open');
+}
+
+function showLinkInfo(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  const folder = getFolderById(link.folderId);
+  document.getElementById('infoModalContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Başlık</div>
+        <div style="font-size:14px;font-weight:500;">${link.title||'—'}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">URL</div>
+        <div style="font-size:13px;color:var(--accent);word-break:break-all;">${link.url}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Tarih</div>
+          <div style="font-size:14px;">📅 ${link.date||'—'}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Saat</div>
+          <div style="font-size:14px;">🕐 ${link.time||'—'}</div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Klasör</div>
+        <div style="font-size:14px;">📁 ${folder?.name||'Ana Sayfa'}</div>
+      </div>
+      ${link.note ? `
+      <div style="background:var(--surface2);border-radius:12px;padding:13px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Not</div>
+        <div style="font-size:14px;color:#90caf9;line-height:1.5;">📝 ${link.note}</div>
+      </div>` : ''}
+    </div>`;
+  document.getElementById('infoModal').classList.add('open');
+}
+
+// ===== LINK ACTIONS MODAL =====
+function closeLinkActions() {
+  document.getElementById('linkActionsModal').classList.remove('open');
+}
+
+function openLinkActions(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  document.getElementById('linkActionsTitle').innerHTML = `<span style="color:var(--accent)">🔗</span> ${link.title||getDomain(link.url)}`;
+  document.getElementById('linkActionsContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div class="lact-row" onclick="showLinkInfo('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:#42a5f5;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#42a5f5" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Bilgi</div><div class="lact-desc">Link detaylarını görüntüle</div></div>
+      </div>
+      <div class="lact-row" onclick="editLink('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:#ffa726;">✎</div>
+        <div class="lact-text"><div class="lact-label">Düzenle</div><div class="lact-desc">Başlık, URL veya not güncelle</div></div>
+      </div>
+      <div class="lact-row" onclick="copyLink(event,'${link.url}');closeLinkActions()">
+        <div class="lact-icon" style="color:#66bb6a;">⎘</div>
+        <div class="lact-text"><div class="lact-label">Kopyala</div><div class="lact-desc">Linki panoya kopyala</div></div>
+      </div>
+      <div class="lact-row" onclick="shareLink('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:#ab47bc;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ab47bc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Paylaş</div><div class="lact-desc">WhatsApp, Telegram ve diğerleri</div></div>
+      </div>
+      <div class="lact-row" onclick="openMoveSingleLink('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:#26c6da;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#26c6da" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Taşı</div><div class="lact-desc">Başka bir klasöre taşı</div></div>
+      </div>
+      <div class="lact-row" onclick="refreshLinkFavicon('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:#ffca28;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffca28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Görseli Güncelle</div><div class="lact-desc">Site simgesini yeniden çek</div></div>
+      </div>
+      <div class="lact-row" onclick="startMultiFromLink('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:#4caf50;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="4" height="4" rx="1"/><rect x="3" y="12" width="4" height="4" rx="1"/><line x1="10" y1="7" x2="21" y2="7"/><line x1="10" y1="14" x2="21" y2="14"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label">Çoklu Seç</div><div class="lact-desc">Bu linkle birlikte toplu işlem yap</div></div>
+      </div>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div class="lact-row" onclick="confirmDeleteLink('${id}');closeLinkActions()">
+        <div class="lact-icon" style="color:var(--danger);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </div>
+        <div class="lact-text"><div class="lact-label" style="color:var(--danger);">Çöpe Taşı</div><div class="lact-desc">Bu linki çöp kutusuna taşı</div></div>
+      </div>
+    </div>`;
+  document.getElementById('linkActionsModal').classList.add('open');
+}
+
+// ===== SHARE =====
+async function shareLink(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  try {
+    await navigator.clipboard.writeText(link.url);
+  } catch(e) {}
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: link.title || getDomain(link.url), url: link.url });
+      return;
+    } catch(e) {}
+  }
+  showToast('⎘ Link kopyalandı!');
+}
+
+// ===== MOVE SINGLE LINK =====
+let moveSingleLinkId = null;
+
+function openMoveSingleLink(id) {
+  moveSingleLinkId = id;
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  document.getElementById('moveSingleTitle').textContent = link.title || getDomain(link.url);
+  renderMoveSingleList();
+  document.getElementById('moveSingleModal').classList.add('open');
+}
+
+function renderMoveSingleList(search = '') {
+  const link = links.find(l => l.id === moveSingleLinkId);
+  const currentFolder = link ? link.folderId : null;
+
+  function folderSVG(color) {
+    const main = color || '#66bb6a';
+    const dark = shadeColor(main, -50);
+    const light = shadeColor(main, 60);
+    return `<svg width="24" height="22" viewBox="0 0 60 52">
+      <rect x="4" y="18" width="52" height="30" rx="5" fill="${dark}"/>
+      <rect x="2" y="14" width="52" height="30" rx="5" fill="${main}"/>
+      <path d="M2 20 Q2 14 8 14 H22 L26 10 H8 Q2 10 2 16Z" fill="${light}"/>
+    </svg>`;
+  }
+
+  function renderLevel(parentId, depth) {
+    return folders
+      .filter(f => f.parentId === parentId && f.id !== 'favorites' && (!search || f.name.toLowerCase().includes(search.toLowerCase())))
+      .map(f => {
+        const isSelected = f.id === currentFolder;
+        return `
+          <div class="lact-row ${isSelected?'move-selected':''}" style="margin-left:${depth*14}px;" onclick="confirmMoveSingleLink('${f.id}')">
+            <div class="lact-icon">${folderSVG(f.color)}</div>
+            <div class="lact-text">
+              <div class="lact-label">${f.name}</div>
+              <div class="lact-desc">${countAllLinks(f.id)} link</div>
+            </div>
+            ${isSelected ? '<span style="color:var(--accent);font-size:16px;">✓</span>' : ''}
+          </div>
+          ${renderLevel(f.id, depth+1)}`;
+      }).join('');
+  }
+
+  const rootSelected = !currentFolder;
+  const html = `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div class="lact-row ${rootSelected?'move-selected':''}" onclick="confirmMoveSingleLink(null)">
+        <div class="lact-icon" style="font-size:20px;">🏠</div>
+        <div class="lact-text"><div class="lact-label">Ana Sayfa</div><div class="lact-desc">Sınıflandırılmamış</div></div>
+        ${rootSelected ? '<span style="color:var(--accent);font-size:16px;">✓</span>' : ''}
+      </div>
+      ${renderLevel(null, 0)}
+    </div>`;
+  document.getElementById('moveSingleList').innerHTML = html;
+}
+
+function confirmMoveSingleLink(folderId) {
+  const link = links.find(l => l.id === moveSingleLinkId);
+  if (!link) return;
+  link.folderId = folderId;
+  save(); render();
+  document.getElementById('moveSingleModal').classList.remove('open');
+  showToast('✓ Taşındı!');
+}
+
+// ===== REFRESH FAVICON =====
+function refreshLinkFavicon(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  try {
+    const domain = new URL(link.url).hostname;
+    link.favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    save(); render();
+    showToast('✓ Görsel güncellendi');
+  } catch(e) { showToast('⚠️ URL geçersiz'); }
+}
+
+// ===== MULTISELECT FROM MENU =====
+function startMultiFromLink(id) {
+  multiSelectMode = true;
+  selectedItems.add('link_' + id);
+  document.getElementById('multibar').classList.add('visible');
+  updateMultibar();
+  renderContent();
+}
+
+// ===== FAVORITES =====
+function toggleFavorite(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  link.favorite = !link.favorite;
+  save();
+  render();
+  showToast(link.favorite ? '★ Favorilere eklendi' : '☆ Favorilerden çıkarıldı');
+}
+
+// ===== SETTINGS =====
+// ===== GÜVENLİK / PIN SİSTEMİ =====
+
+// --- UYGULAMA PIN ---
+let appLockBuffer = '';
+let appUnlocked = false;
+
+function initAppLock() {
+  const s = settings;
+  if (s.appPinEnabled && s.appPin) {
+    showAppLockScreen();
+  } else {
+    appUnlocked = true;
+  }
+}
+
+function showAppLockScreen() {
+  const el = document.getElementById('appLockScreen');
+  el.classList.add('visible');
+  appLockBuffer = '';
+  updatePinDots('appLockDots', 0);
+  document.getElementById('appLockError').textContent = '';
+  // biyometrik buton
+  const bioBtn = document.getElementById('biometricBtn');
+  if (settings.biometricEnabled) {
+    bioBtn.style.display = 'block';
+    setTimeout(tryBiometric, 400);
+  } else {
+    bioBtn.style.display = 'none';
+  }
+}
+
+function appLockKey(k) {
+  if (k === 'bksp') {
+    appLockBuffer = appLockBuffer.slice(0, -1);
+  } else if (k === '' || appLockBuffer.length >= 4) {
+    return;
+  } else {
+    appLockBuffer += k;
+  }
+  updatePinDots('appLockDots', appLockBuffer.length);
+  if (appLockBuffer.length === 4) {
+    setTimeout(() => {
+      if (appLockBuffer === settings.appPin) {
+        document.getElementById('appLockScreen').classList.remove('visible');
+        appUnlocked = true;
+      } else {
+        document.getElementById('appLockError').textContent = '❌ Yanlış PIN, tekrar dene';
+        appLockBuffer = '';
+        updatePinDots('appLockDots', 0);
+        shakeEl('appLockDots');
+      }
+    }, 100);
+  }
+}
+
+async function tryBiometric() {
+  if (!window.PublicKeyCredential) { showToast('⚠️ Cihaz desteklemiyor'); return; }
+  try {
+    const cred = await navigator.credentials.get({
+      publicKey: {
+        challenge: new Uint8Array(16),
+        timeout: 60000,
+        userVerification: 'required',
+      }
+    });
+    if (cred) {
+      document.getElementById('appLockScreen').classList.remove('visible');
+      appUnlocked = true;
+    }
+  } catch(e) {
+    // WebAuthn yoksa basit prompt fallback
+    showToast('⚠️ Biyometrik desteklenmiyor');
+  }
+}
+
+// --- PIN AYARLAMA ---
+let setPinStep = 0; // 0=yeni pin, 1=onay
+let setPinFirst = '';
+let setPinBuffer = '';
+
+function openSetPinModal() {
+  setPinStep = 0;
+  setPinFirst = '';
+  setPinBuffer = '';
+  document.getElementById('setPinSubtitle').textContent = '4 haneli yeni PIN\'ini gir';
+  document.getElementById('setPinError').textContent = '';
+  updatePinDots('setPinDots', 0);
+  document.getElementById('setPinModal').classList.add('open');
+}
+
+function setPinKey(k) {
+  if (k === 'bksp') {
+    setPinBuffer = setPinBuffer.slice(0, -1);
+  } else if (k === '' || setPinBuffer.length >= 4) {
+    return;
+  } else {
+    setPinBuffer += k;
+  }
+  updatePinDots('setPinDots', setPinBuffer.length);
+  if (setPinBuffer.length === 4) {
+    setTimeout(() => {
+      if (setPinStep === 0) {
+        setPinFirst = setPinBuffer;
+        setPinBuffer = '';
+        setPinStep = 1;
+        document.getElementById('setPinSubtitle').textContent = '✅ PIN\'i tekrar gir (onay)';
+        updatePinDots('setPinDots', 0);
+      } else {
+        if (setPinBuffer === setPinFirst) {
+          settings.appPin = setPinBuffer;
+          settings.appPinEnabled = true;
+          save();
+          document.getElementById('setPinModal').classList.remove('open');
+          updateSecurityToggles();
+          showToast('✅ PIN kaydedildi');
+        } else {
+          document.getElementById('setPinError').textContent = '❌ PIN\'ler uyuşmuyor';
+          setPinBuffer = '';
+          setPinStep = 0;
+          setPinFirst = '';
+          document.getElementById('setPinSubtitle').textContent = '4 haneli yeni PIN\'ini gir';
+          updatePinDots('setPinDots', 0);
+          shakeEl('setPinDots');
+        }
+      }
+    }, 100);
+  }
+}
+
+// --- KLASÖR PIN ---
+let folderPinBuffer = '';
+let folderPinTargetId = null;
+let folderPinMode = 'unlock'; // 'unlock' | 'set'
+let setFolderPinBuffer = '';
+let setFolderPinStep = 0;
+let setFolderPinFirst = '';
+let unlockedFolders = new Set();
+
+function openFolderLock(folderId) {
+  const f = folders.find(x => x.id === folderId);
+  if (!f) return;
+  folderPinTargetId = folderId;
+  if (f.pin) {
+    folderPinMode = "unlock";
+    folderPinBuffer = "";
+    document.getElementById("folderPinTitle").textContent = f.name;
+    document.getElementById("folderPinSubtitle").textContent = "Klasörü açmak için şifreyi gir";
+    document.getElementById("folderPinError").textContent = "";
+    document.getElementById("folderPinRemoveRow").style.display = "block";
+    updatePinDots("folderPinDots", 0);
+    document.getElementById("folderPinModal").classList.add("open");
+  } else {
+    openSetFolderPin(folderId);
+  }
+}
+
+function openRemoveFolderPin(folderId) {
+  const f = folders.find(x => x.id === folderId);
+  if (!f) return;
+  folderPinTargetId = folderId;
+  folderPinMode = "remove";
+  folderPinBuffer = "";
+  document.getElementById("folderPinTitle").textContent = f.name;
+  document.getElementById("folderPinSubtitle").textContent = "🗑 Şifreyi kaldırmak için doğrula";
+  document.getElementById("folderPinError").textContent = "";
+  document.getElementById("folderPinRemoveRow").style.display = "none";
+  updatePinDots("folderPinDots", 0);
+  document.getElementById("folderPinModal").classList.add("open");
+}
+
+function folderPinKey(k) {
+  if (k === "bksp") {
+    folderPinBuffer = folderPinBuffer.slice(0, -1);
+  } else if (k === "" || folderPinBuffer.length >= 4) {
+    return;
+  } else {
+    folderPinBuffer += k;
+  }
+  updatePinDots("folderPinDots", folderPinBuffer.length);
+  if (folderPinBuffer.length === 4) {
+    setTimeout(() => {
+      const f = folders.find(x => x.id === folderPinTargetId);
+      if (folderPinBuffer === f.pin) {
+        if (folderPinMode === "remove") {
+          f.pin = null;
+          unlockedFolders.delete(folderPinTargetId);
+          save(); render();
+          document.getElementById("folderPinModal").classList.remove("open");
+          showToast("🔓 Klasör şifresi kaldırıldı");
+        } else {
+          unlockedFolders.add(folderPinTargetId);
+          document.getElementById("folderPinModal").classList.remove("open");
+          navigate(folderPinTargetId);
+        }
+      } else {
+        document.getElementById("folderPinError").textContent = "❌ Yanlış şifre";
+        folderPinBuffer = "";
+        updatePinDots("folderPinDots", 0);
+        shakeEl("folderPinDots");
+      }
+    }, 100);
+  }
+}
+
+function removeFolderPin() {
+  document.getElementById("folderPinModal").classList.remove("open");
+  setTimeout(() => openRemoveFolderPin(folderPinTargetId), 300);
+}
+
+function openSetFolderPin(folderId) {
+  folderPinTargetId = folderId;
+  setFolderPinStep = 0;
+  setFolderPinFirst = '';
+  setFolderPinBuffer = '';
+  const f = folders.find(x => x.id === folderId);
+  document.getElementById('setFolderPinSubtitle').textContent = '"' + f.name + '" için 4 haneli şifre belirle';
+  document.getElementById('setFolderPinError').textContent = '';
+  updatePinDots('setFolderPinDots', 0);
+  document.getElementById('setFolderPinModal').classList.add('open');
+}
+
+function setFolderPinKey(k) {
+  if (k === 'bksp') {
+    setFolderPinBuffer = setFolderPinBuffer.slice(0, -1);
+  } else if (k === '' || setFolderPinBuffer.length >= 4) {
+    return;
+  } else {
+    setFolderPinBuffer += k;
+  }
+  updatePinDots('setFolderPinDots', setFolderPinBuffer.length);
+  if (setFolderPinBuffer.length === 4) {
+    setTimeout(() => {
+      if (setFolderPinStep === 0) {
+        setFolderPinFirst = setFolderPinBuffer;
+        setFolderPinBuffer = '';
+        setFolderPinStep = 1;
+        document.getElementById('setFolderPinSubtitle').textContent = '✅ Şifreyi tekrar gir (onay)';
+        updatePinDots('setFolderPinDots', 0);
+      } else {
+        if (setFolderPinBuffer === setFolderPinFirst) {
+          const f = folders.find(x => x.id === folderPinTargetId);
+          f.pin = setFolderPinBuffer;
+          unlockedFolders.add(folderPinTargetId);
+          save(); render();
+          document.getElementById('setFolderPinModal').classList.remove('open');
+          showToast('🔒 Klasör şifrelendi');
+        } else {
+          document.getElementById('setFolderPinError').textContent = '❌ Şifreler uyuşmuyor';
+          setFolderPinBuffer = '';
+          setFolderPinStep = 0;
+          setFolderPinFirst = '';
+          document.getElementById('setFolderPinSubtitle').textContent = '4 haneli şifre belirle';
+          updatePinDots('setFolderPinDots', 0);
+          shakeEl('setFolderPinDots');
+        }
+      }
+    }, 100);
+  }
+}
+
+// --- YARDIMCI ---
+function updatePinDots(containerId, count) {
+  const dots = document.getElementById(containerId).querySelectorAll('.pin-dot');
+  dots.forEach((d, i) => d.classList.toggle('filled', i < count));
+}
+
+function shakeEl(id) {
+  const el = document.getElementById(id);
+  el.style.animation = 'shake 0.4s';
+  setTimeout(() => el.style.animation = '', 400);
+}
+
+// --- TOGGLE'LAR ---
+function toggleAppPin() {
+  if (settings.appPinEnabled) {
+    settings.appPinEnabled = false;
+    settings.appPin = null;
+    save();
+    updateSecurityToggles();
+    showToast('🔓 PIN kilidi kapatıldı');
+  } else {
+    // Önce PIN ayarla, sonra aktif olsun
+    openSetPinModal();
+  }
+}
+
+function toggleBiometric() {
+  settings.biometricEnabled = !settings.biometricEnabled;
+  save();
+  updateSecurityToggles();
+  showToast(settings.biometricEnabled ? '✅ Biyometrik açık' : '🔓 Biyometrik kapalı');
+}
+
+function updateSecurityToggles() {
+  const pinOn = !!settings.appPinEnabled;
+  const bioOn = !!settings.biometricEnabled;
+  const pt = document.getElementById('appPinToggle');
+  const pb = document.getElementById('appPinThumb');
+  const bt = document.getElementById('biometricToggle');
+  const bb = document.getElementById('biometricThumb');
+  const pr = document.getElementById('appPinSetRow');
+  if (pt) { pt.style.background = pinOn ? 'var(--accent)' : 'var(--border)'; pb.style.left = pinOn ? '23px' : '3px'; pb.style.background = pinOn ? '#000' : '#fff'; }
+  if (bt) { bt.style.background = bioOn ? 'var(--accent)' : 'var(--border)'; bb.style.left = bioOn ? '23px' : '3px'; bb.style.background = bioOn ? '#000' : '#fff'; }
+  if (pr) pr.style.display = pinOn ? 'block' : 'none';
+}
+
+function openFolderIfAllowed(folderId) {
+  const f = folders.find(x => x.id === folderId);
+  if (f && f.pin && !unlockedFolders.has(folderId)) {
+    openFolderLock(folderId);
+  } else {
+    navigate(folderId);
+  }
+}
+
+function openSettingsModal() {
+  updateSecurityToggles();
+  document.getElementById('recentCountInput').value = settings.recentCount;
+  document.getElementById('defaultSortInput').value = settings.defaultSortMode;
+  document.getElementById('defaultFolderSortInput').value = settings.defaultFolderSortMode;
+  document.getElementById('trashDaysInput').value = settings.trashDays ?? 30;
+  updateSettingsPreview();
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function saveSettings() {
+  settings.recentCount = parseInt(document.getElementById('recentCountInput').value) || 5;
+  settings.defaultSortMode = parseInt(document.getElementById('defaultSortInput').value);
+  settings.defaultFolderSortMode = parseInt(document.getElementById('defaultFolderSortInput').value);
+  settings.trashDays = parseInt(document.getElementById('trashDaysInput').value);
+  setSortMode(settings.defaultSortMode);
+  setFolderSortMode(settings.defaultFolderSortMode);
+  save();
+  document.getElementById('settingsModal').classList.remove('open');
+  showToast('✅ Ayarlar kaydedildi');
+}
+
+// ===== RECENT LINKS =====
+function openRecentModal() {
+  const count = settings.recentCount || 5;
+  const sorted = [...links].sort((a,b) => {
+    const da = (a.date||'') + (a.time||'');
+    const db = (b.date||'') + (b.time||'');
+    return db.localeCompare(da);
+  }).slice(0, count);
+
+  const container = document.getElementById('recentModalContent');
+  if (!sorted.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔗</div><div class="empty-title">Henüz link yok</div></div>`;
+  } else {
+    container.innerHTML = sorted.map(link => {
+      const favicon = getFavicon(link.url);
+      const folder = getFolderById(link.folderId);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:12px;margin-bottom:8px;cursor:pointer;" onclick="openLink('${link.url}')">
+        <div style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+          ${favicon ? `<img src="${favicon}" style="width:20px;height:20px;" onerror="this.parentElement.innerHTML='🔗'">` : '🔗'}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${link.title||getDomain(link.url)}</div>
+          <div style="font-size:11px;color:var(--text2);">📁 ${folder?.name||'Ana Sayfa'} · ${link.date||''} ${link.time||''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('settingsModal').classList.remove('open');
+  document.getElementById('recentModal').classList.add('open');
+}
+
+function updateRecentBtn() {
+  const count = settings.recentCount || 5;
+  const el = document.getElementById('recentBtnCount');
+  if (el) el.textContent = `Son ${count}`;
+}
+
+// ===== SORT MODE =====
+const sortModes = ['manuel', 'a-z', 'z-a', 'yeni', 'eski'];
+const sortLabels = ['Manuel', 'A→Z', 'Z→A', 'Yeni→Eski', 'Eski→Yeni'];
+let currentSortMode = 0;
+
+function toggleSortDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('sortDropdown').classList.toggle('open');
+}
+
+function setSortMode(idx) {
+  currentSortMode = idx;
+  const el = document.getElementById('sortLabel');
+  if (el) el.textContent = sortLabels[idx];
+  document.querySelectorAll('.sort-opt').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+    el.innerHTML = el.innerHTML.replace(/ ?<span>✓<\/span>/g, '');
+    if (i === idx) el.innerHTML += ' <span>✓</span>';
+  });
+  document.getElementById('sortDropdown').classList.remove('open');
+  render();
+}
+
+// Dropdown dışına basınca kapat
+document.addEventListener('click', () => {
+  document.getElementById('sortDropdown')?.classList.remove('open');
+});
+
+function getSortedLinks(linkList) {
+  if (currentSortMode === 0) return linkList;
+  const sorted = [...linkList];
+  if (currentSortMode === 1) sorted.sort((a,b) => (a.title||'').localeCompare(b.title||'', 'tr'));
+  if (currentSortMode === 2) sorted.sort((a,b) => (b.title||'').localeCompare(a.title||'', 'tr'));
+  if (currentSortMode === 3) sorted.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  if (currentSortMode === 4) sorted.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  return sorted;
+}
+
+let currentFolderSortMode = 0;
+
+function setFolderSortMode(idx) {
+  currentFolderSortMode = idx;
+  const labels = ['Manuel', 'A→Z', 'Z→A'];
+  document.querySelectorAll('[id^="fsopt-"]').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+    el.innerHTML = el.innerHTML.replace(/ ?<span>✓<\/span>/g, '');
+    if (i === idx) el.innerHTML += ' <span>✓</span>';
+  });
+  document.getElementById('sortDropdown').classList.remove('open');
+  render();
+}
+
+function getSortedFolders(folderList) {
+  if (currentFolderSortMode === 0) return folderList;
+  const sorted = [...folderList];
+  if (currentFolderSortMode === 1) sorted.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+  if (currentFolderSortMode === 2) sorted.sort((a,b) => b.name.localeCompare(a.name, 'tr'));
+  return sorted;
+}
+
+// ===== FOLDER COLOR PICKER =====
+function shadeColor(hex, percent) {
+  const num = parseInt(hex.replace('#',''), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + percent));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + percent));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + percent));
+  return '#' + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+}
+const folderColors = [
+  // Kırmızı tonları
+  '#ff1744','#ff5252','#ff6b6b','#ff8a80',
+  // Turuncu & Sarı
+  '#ff6d00','#ff9100','#ffab40','#ffd740',
+  // Yeşil tonları
+  '#00c853','#69f0ae','#b9f6ca','#ccff90',
+  // Mavi tonları
+  '#2979ff','#448aff','#82b1ff','#80d8ff',
+  // Mor & Pembe
+  '#d500f9','#e040fb','#ea80fc','#ff80ab',
+  // Turkuaz & Açık mavi
+  '#00e5ff','#18ffff','#84ffff','#a7ffeb',
+  // Toprak tonları
+  '#8d6e63','#a1887f','#bcaaa4','#d7ccc8',
+  // Nötr
+  '#ffffff','#e0e0e0','#9e9e9e','#616161',
+];
+let colorPickerFolderId = null;
+
+function openColorPicker(id) {
+  colorPickerFolderId = id;
+  const f = getFolderById(id);
+  const palette = document.getElementById('colorPalette');
+  palette.innerHTML = folderColors.map(c => `
+    <div onclick="setFolderColor('${c}')"
+      style="width:100%;aspect-ratio:1;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${f.color===c?'#fff':'transparent'};box-sizing:border-box;transition:transform 0.15s;"
+      ontouchstart="this.style.transform='scale(1.2)'"
+      ontouchend="this.style.transform='scale(1)'">
+    </div>`).join('');
+  // Mevcut rengi custom picker'a set et
+  if (f.color) updateWheelPreview(f.color);
+  document.getElementById('colorModal').classList.add('open');
+}
+
+function setFolderColor(color) {
+  const f = getFolderById(colorPickerFolderId);
+  if (f) { f.color = color; save(); render(); }
+  document.getElementById('colorModal').classList.remove('open');
+  showToast('🎨 Renk güncellendi!');
+}
+
+function resetFolderColor() {
+  const f = getFolderById(colorPickerFolderId);
+  if (f) { delete f.color; save(); render(); }
+  document.getElementById('colorModal').classList.remove('open');
+  showToast('🔄 Varsayılan renge döndü');
+}
+
+function setFolderDefaultColor() {
+  const hex = document.getElementById('colorPreview').style.background;
+  settings.defaultFolderColor = wheelColor || hex;
+  save();
+  document.getElementById('colorModal').classList.remove('open');
+  showToast('📌 Varsayılan renk ayarlandı');
+}
+
+// ===== ACCENT COLOR MODAL =====
+let accentWheelColor = '#e8ff47';
+
+function openAccentColorModal() {
+  const current = settings.accentColor || '#e8ff47';
+  accentWheelColor = current;
+  buildAccentPalette();
+  drawAccentColorWheel();
+  updateAccentWheelPreview(current);
+  document.getElementById('accentColorModal').classList.add('open');
+  // settings modalını kapat
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function buildAccentPalette() {
+  const current = settings.accentColor || '#e8ff47';
+  const container = document.getElementById('accentPalette');
+  if (!container) return;
+  container.innerHTML = THEME_COLORS.map(c => {
+    const isSelected = c.hex.toLowerCase() === current.toLowerCase();
+    return `<div onclick="pickAccentColor('${c.hex}')" title="${c.label}"
+      style="width:100%;aspect-ratio:1;border-radius:50%;background:${c.hex};cursor:pointer;
+             border:3px solid ${isSelected ? '#fff' : 'transparent'};box-sizing:border-box;
+             box-shadow:${isSelected ? '0 0 0 2px '+c.hex : '0 1px 4px rgba(0,0,0,0.3)'};
+             transition:all 0.15s;"
+      ontouchstart="this.style.transform='scale(1.2)'"
+      ontouchend="this.style.transform='scale(1)'"></div>`;
+  }).join('');
+}
+
+function pickAccentColor(hex) {
+  accentWheelColor = hex;
+  settings.accentColor = hex;
+  applyAccentColor(hex);
+  save();
+  buildAccentPalette();
+  updateAccentWheelPreview(hex);
+  updateSettingsPreview();
+  document.getElementById('accentColorModal').classList.remove('open');
+  document.getElementById('settingsModal').classList.add('open');
+  showToast('🎨 Vurgu rengi değiştirildi');
+}
+
+function applyAccentWheelColor() {
+  settings.accentColor = accentWheelColor;
+  applyAccentColor(accentWheelColor);
+  save();
+  buildAccentPalette();
+  updateSettingsPreview();
+  document.getElementById('accentColorModal').classList.remove('open');
+  document.getElementById('settingsModal').classList.add('open');
+  showToast('🎨 Vurgu rengi değiştirildi');
+}
+
+function resetAccentColor() {
+  const def = settings.defaultAccentColor || '#e8ff47';
+  accentWheelColor = def;
+  settings.accentColor = def;
+  applyAccentColor(def);
+  save();
+  buildAccentPalette();
+  updateAccentWheelPreview(def);
+  updateSettingsPreview();
+  showToast('🔄 Varsayılan renge döndü');
+}
+
+function setAccentAsDefault() {
+  settings.defaultAccentColor = settings.accentColor;
+  save();
+  showToast('📌 Varsayılan renk ayarlandı');
+}
+
+function updateSettingsPreview() {
+  const preview = document.getElementById('themeColorPreview');
+  const label = document.getElementById('themeColorLabel');
+  const current = settings.accentColor || '#e8ff47';
+  if (preview) preview.style.background = current;
+  if (label) {
+    const found = THEME_COLORS.find(c => c.hex.toLowerCase() === current.toLowerCase());
+    label.textContent = found ? found.label : current;
+  }
+}
+
+function updateAccentWheelPreview(hex) {
+  const preview = document.getElementById('accentColorPreview');
+  const hexVal = document.getElementById('accentColorHexVal');
+  if (preview) preview.style.background = hex;
+  if (hexVal) hexVal.textContent = hex;
+}
+
+function drawAccentColorWheel() {
+  const canvas = document.getElementById('accentColorWheel');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const rings = 7, maxR = cx - 2, minR = maxR / (rings + 1);
+
+  for (let ring = 0; ring < rings; ring++) {
+    const r1 = minR + (ring / rings) * (maxR - minR);
+    const r2 = minR + ((ring + 1) / rings) * (maxR - minR);
+    const lightness = 20 + (ring / (rings - 1)) * 60;
+    const saturation = 100 - (ring / (rings - 1)) * 30;
+    const segments = 36;
+    for (let seg = 0; seg < segments; seg++) {
+      const a1 = (seg / segments) * Math.PI * 2 - Math.PI / 2;
+      const a2 = ((seg + 1) / segments) * Math.PI * 2 - Math.PI / 2;
+      const hue = (seg / segments) * 360;
+      ctx.beginPath();
+      ctx.moveTo(cx + r1 * Math.cos(a1), cy + r1 * Math.sin(a1));
+      ctx.arc(cx, cy, r2, a1, a2);
+      ctx.arc(cx, cy, r1, a2, a1, true);
+      ctx.closePath();
+      ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      ctx.fill();
+    }
+  }
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, minR);
+  grd.addColorStop(0, '#000');
+  grd.addColorStop(1, '#fff');
+  ctx.beginPath();
+  ctx.arc(cx, cy, minR, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  canvas.ontouchstart = canvas.ontouchmove = function(e) {
+    e.preventDefault();
+    const t = e.touches[0];
+    const r = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / r.width;
+    const scaleY = canvas.height / r.height;
+    const x = (t.clientX - r.left) * scaleX;
+    const y = (t.clientY - r.top) * scaleY;
+    const hex = getWheelColor(canvas, Math.round(x), Math.round(y));
+    if (hex === '#000000' || hex === '#ffffff') return;
+    accentWheelColor = hex;
+    updateAccentWheelPreview(hex);
+  };
+  canvas.onclick = function(e) {
+    const r = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / r.width;
+    const scaleY = canvas.height / r.height;
+    const x = (e.clientX - r.left) * scaleX;
+    const y = (e.clientY - r.top) * scaleY;
+    const hex = getWheelColor(canvas, Math.round(x), Math.round(y));
+    if (hex === '#000000' || hex === '#ffffff') return;
+    accentWheelColor = hex;
+    updateAccentWheelPreview(hex);
+  };
+}
+
+// ===== COLOR WHEEL =====
+let wheelColor = '#42a5f5';
+
+function drawColorWheel() {
+  const canvas = document.getElementById('colorWheel');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const rings = 7;
+  const maxR = cx - 2;
+  const minR = maxR / (rings + 1);
+
+  // Renk çarkı — her açıda hue, her halkada saturation/lightness
+  for (let ring = 0; ring < rings; ring++) {
+    const r1 = minR + (ring / rings) * (maxR - minR);
+    const r2 = minR + ((ring + 1) / rings) * (maxR - minR);
+    const lightness = 20 + (ring / (rings - 1)) * 60; // 20% → 80%
+    const saturation = 100 - (ring / (rings - 1)) * 30;
+    const segments = 36;
+    for (let seg = 0; seg < segments; seg++) {
+      const a1 = (seg / segments) * Math.PI * 2 - Math.PI / 2;
+      const a2 = ((seg + 1) / segments) * Math.PI * 2 - Math.PI / 2;
+      const hue = (seg / segments) * 360;
+      ctx.beginPath();
+      ctx.moveTo(cx + r1 * Math.cos(a1), cy + r1 * Math.sin(a1));
+      ctx.arc(cx, cy, r2, a1, a2);
+      ctx.arc(cx, cy, r1, a2, a1, true);
+      ctx.closePath();
+      ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      ctx.fill();
+    }
+  }
+  // Merkez: siyah → beyaz gradyanı
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, minR);
+  grd.addColorStop(0, '#000');
+  grd.addColorStop(1, '#fff');
+  ctx.beginPath();
+  ctx.arc(cx, cy, minR, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+}
+
+function getWheelColor(canvas, x, y) {
+  const ctx = canvas.getContext('2d');
+  const px = ctx.getImageData(x, y, 1, 1).data;
+  return '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function updateWheelPreview(hex) {
+  wheelColor = hex;
+  const prev = document.getElementById('colorPreview');
+  const hexVal = document.getElementById('colorHexVal');
+  if (prev) prev.style.background = hex;
+  if (hexVal) hexVal.textContent = hex;
+}
+
+function applyWheelColor() {
+  setFolderColor(wheelColor);
+}
+
+function initColorWheel() {
+  drawColorWheel();
+  const canvas = document.getElementById('colorWheel');
+  if (!canvas) return;
+
+  function pickColor(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = Math.round((clientX - rect.left) * scaleX);
+    const y = Math.round((clientY - rect.top) * scaleY);
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+    const hex = getWheelColor(canvas, x, y);
+    updateWheelPreview(hex);
+  }
+
+  canvas.addEventListener('click', pickColor);
+  canvas.addEventListener('touchstart', pickColor, {passive: false});
+  canvas.addEventListener('touchmove', pickColor, {passive: false});
+}
+
+// Renk çarkını modal açılınca başlat
+const _origOpenColorPicker = openColorPicker;
+openColorPicker = function(id) {
+  _origOpenColorPicker(id);
+  setTimeout(() => { initColorWheel(); }, 50);
+};
+let sortSelectedFolderId = null;
+let folderLongPressTimer = null;
+let folderLongPressMoved = false;
+
+function folderLongPressStart(e, id) {
+  if (multiSelectMode) return;
+  // Butona basıldıysa uzun basma başlatma
+  if (e.target.closest('.action-btn') || e.target.closest('.sort-btn')) return;
+  folderLongPressMoved = false;
+  clearTimeout(folderLongPressTimer);
+  folderLongPressTimer = setTimeout(() => {
+    if (folderLongPressMoved) return;
+    if (navigator.vibrate) navigator.vibrate(50);
+    sortSelectedFolderId = (sortSelectedFolderId === id) ? null : id;
+    render();
+    if (sortSelectedFolderId) showToast('▲▼ Oklarla sırayı değiştir');
+  }, 500);
+}
+
+function folderLongPressCancel() {
+  folderLongPressMoved = true;
+  clearTimeout(folderLongPressTimer);
+}
+
+function folderLongPressEnd(e, id) {
+  clearTimeout(folderLongPressTimer);
+}
+
+function cancelFolderSort() {
+  sortSelectedFolderId = null;
+  render();
+}
+
+function moveFolderUp(id) {
+  const f = folders.find(x => x.id === id);
+  if (!f) return;
+  const siblings = folders.filter(x => x.parentId === f.parentId);
+  const idx = siblings.findIndex(x => x.id === id);
+  if (idx <= 0) return;
+  const prevSibling = siblings[idx - 1];
+  const gi = folders.findIndex(x => x.id === id);
+  const pi = folders.findIndex(x => x.id === prevSibling.id);
+  [folders[gi], folders[pi]] = [folders[pi], folders[gi]];
+  save(); render();
+}
+
+function moveFolderDown(id) {
+  const f = folders.find(x => x.id === id);
+  if (!f) return;
+  const siblings = folders.filter(x => x.parentId === f.parentId);
+  const idx = siblings.findIndex(x => x.id === id);
+  if (idx >= siblings.length - 1) return;
+  const nextSibling = siblings[idx + 1];
+  const gi = folders.findIndex(x => x.id === id);
+  const ni = folders.findIndex(x => x.id === nextSibling.id);
+  [folders[gi], folders[ni]] = [folders[ni], folders[gi]];
+  save(); render();
+}
+
+// ===== LINK SORT (Basılı tut → ▲▼ oklarla sırala) =====
+let sortSelectedId = null;
+let linkLongPressTimer = null;
+
+function linkLongPressStart(e, id) {
+  if (multiSelectMode) return;
+  clearTimeout(linkLongPressTimer);
+  linkLongPressTimer = setTimeout(() => {
+    if (navigator.vibrate) navigator.vibrate(50);
+    sortSelectedId = (sortSelectedId === id) ? null : id;
+    render();
+    if (sortSelectedId) showToast('▲▼ Oklarla sırayı değiştir');
+  }, 500);
+}
+
+function linkLongPressEnd() { clearTimeout(linkLongPressTimer); }
+function linkLongPressCancel() { clearTimeout(linkLongPressTimer); }
+
+function cancelSortSelect() {
+  sortSelectedId = null;
+  render();
+}
+
+function moveLinkUp(id) {
+  const idx = links.findIndex(l => l.id === id);
+  if (idx <= 0) return;
+  // Aynı klasördeki bir önceki linki bul
+  const folderId = links[idx].folderId;
+  let prevIdx = idx - 1;
+  while (prevIdx >= 0 && links[prevIdx].folderId !== folderId) prevIdx--;
+  if (prevIdx < 0) return;
+  [links[idx], links[prevIdx]] = [links[prevIdx], links[idx]];
+  save(); render();
+}
+
+function moveLinkDown(id) {
+  const idx = links.findIndex(l => l.id === id);
+  if (idx === -1) return;
+  const folderId = links[idx].folderId;
+  let nextIdx = idx + 1;
+  while (nextIdx < links.length && links[nextIdx].folderId !== folderId) nextIdx++;
+  if (nextIdx >= links.length) return;
+  [links[idx], links[nextIdx]] = [links[nextIdx], links[idx]];
+  save(); render();
+}
+
+// ===== INIT =====
+save();
+render();
+initAppLock();
+navigating = true;
+location.hash = 'start';
+setTimeout(() => {
+  location.hash = 'root';
+  navigating = false;
+}, 150);
+</script>
+</body>
+</html>
