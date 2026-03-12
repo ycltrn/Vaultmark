@@ -1264,19 +1264,10 @@ function setHashSilent(hash) {
 let navigating = false;
 
 window.addEventListener('popstate', () => {
-  // 1. Modal açıksa kapat — history adımı zaten tüketildi, yenisini ekleme
+  // 1. Modal açıksa — geri tuşunu engelle, adımı geri koy
   const allModals = [...document.querySelectorAll('.modal-overlay.open')];
   if (allModals.length) {
-    const lastModal = allModals[allModals.length - 1];
-    lastModal.classList.remove('open');
-    if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
-    if (lastModal.id === 'settingsModal') closeThemePalette();
-    if (lastModal.id === 'confirmModal') { confirmCallback = null; }
-    // Modal kapandı, adım tüketildi — ama navStack için bir adım geri koymalıyız
-    // ki sonraki geri tuşu klasörden çıksın, uygulamadan değil
-    if (navStack.length > 0) {
-      history.pushState(null, '');
-    }
+    history.pushState(null, ''); // Adımı geri koy, hiçbir şey yapma
     return;
   }
 
