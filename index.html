@@ -1254,7 +1254,7 @@ function showExitHint() {
 }
 
 function pushModalHash() {
-  history.pushState({modal: true}, '');
+  history.pushState(null, '');
 }
 
 function setHashSilent(hash) {
@@ -1264,10 +1264,15 @@ function setHashSilent(hash) {
 let navigating = false;
 
 window.addEventListener('popstate', () => {
-  // 1. Modal açıksa — geri tuşunu engelle, adımı geri koy
+  // 1. Modal açıksa kapat ve tüketilen adımı geri koy
   const allModals = [...document.querySelectorAll('.modal-overlay.open')];
   if (allModals.length) {
-    history.pushState(null, ''); // Adımı geri koy, hiçbir şey yapma
+    const lastModal = allModals[allModals.length - 1];
+    lastModal.classList.remove('open');
+    if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
+    if (lastModal.id === 'settingsModal') closeThemePalette();
+    if (lastModal.id === 'confirmModal') { confirmCallback = null; }
+    history.pushState(null, ''); // Tüketilen adımı geri koy
     return;
   }
 
