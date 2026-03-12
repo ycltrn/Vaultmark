@@ -1226,11 +1226,10 @@ function navigate(folderId, folderName) {
     currentFolderId = null;
     navStack = [];
     unlockedFolders.clear();
-    history.replaceState(null, '');
   } else {
     navStack.push({id: currentFolderId, name: currentFolderId ? getFolderById(currentFolderId).name : 'Ana Sayfa'});
     currentFolderId = folderId;
-    history.pushState(null, '');
+    history.pushState(null, '', location.href);
   }
   cancelMultiSelect();
   render();
@@ -1256,33 +1255,26 @@ function showExitHint() {
   setTimeout(() => { _exitHintActive = false; }, 2000);
 }
 
-function pushModalHash() { /* artık kullanılmıyor */ }
-
-function setHashSilent(hash) {
-  history.replaceState(null, '', '#' + hash);
-}
-
-let navigating = false;
+function pushModalHash() {}
+function setHashSilent(hash) {}
 
 window.addEventListener('popstate', () => {
-  // Modal açıksa — adımı geri koy, modal X ile kapanır
-  const allModals = [...document.querySelectorAll('.modal-overlay.open')];
-  if (allModals.length) {
-    setTimeout(() => history.pushState(null, ''), 0);
-    return;
-  }
+  // Modal açıksa hiçbir şey yapma
+  if (document.querySelector('.modal-overlay.open')) return;
 
   // Klasör içindeysek üste çık
   if (navStack.length > 0) {
     navBack();
-    setTimeout(() => history.pushState(null, ''), 0);
+    history.pushState(null, '', location.href);
     return;
   }
 
-  // Kök — çıkış ipucu
+  // Kök — çıkış ipucu veya çıkış
+  if (_exitHintActive) return; // ikinci basış — çıkışa izin ver
   showExitHint();
-  setTimeout(() => history.pushState(null, ''), 0);
+  history.pushState(null, '', location.href);
 });
+
 
 function getFolderById(id) { return folders.find(f => f.id === id); }
 function getSubFolders(parentId) { return folders.filter(f => f.parentId === parentId); }
