@@ -1265,22 +1265,23 @@ function setHashSilent(hash) {
 let navigating = false;
 
 window.addEventListener('popstate', () => {
-  // Modal açıksa hiçbir şey yapma — modal X ile veya dışına tıklayarak kapanır
+  // Modal açıksa — adımı geri koy, modal X ile kapanır
   const allModals = [...document.querySelectorAll('.modal-overlay.open')];
   if (allModals.length) {
-    history.pushState(null, '');
+    setTimeout(() => history.pushState(null, ''), 0);
     return;
   }
 
   // Klasör içindeysek üste çık
   if (navStack.length > 0) {
     navBack();
+    setTimeout(() => history.pushState(null, ''), 0);
     return;
   }
 
   // Kök — çıkış ipucu
   showExitHint();
-  history.pushState(null, '');
+  setTimeout(() => history.pushState(null, ''), 0);
 });
 
 function getFolderById(id) { return folders.find(f => f.id === id); }
@@ -3887,8 +3888,7 @@ function moveLinkDown(id) {
 save();
 render();
 initAppLock();
-// 10 boş history adımı — geri tuşu tamponu (TWA'da erken kapanmayı önler)
-for (let i = 0; i < 10; i++) history.pushState(null, '');
+history.pushState(null, '');
 </script>
 </div><!-- /scroll-wrap -->
 </body>
