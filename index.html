@@ -1257,13 +1257,14 @@ window.addEventListener('hashchange', () => {
     return;
   }
 
-  // 2. Başka bir modal açıksa kapat — çıkış sorusu sorma!
+  // 2. Başka bir modal açıksa kapat — çıkış sorusu sorma, hash'i geri yükle!
   const modals = [...document.querySelectorAll('.modal-overlay.open')];
   if (modals.length) {
     const lastModal = modals[modals.length - 1];
     lastModal.classList.remove('open');
     if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
     if (lastModal.id === 'settingsModal') closeThemePalette();
+    // Hash'i mevcut konuma geri yükle (navStack'e göre)
     setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
     return;
   }
@@ -1275,13 +1276,8 @@ window.addEventListener('hashchange', () => {
     return;
   }
 
-  // 4. Kök dizindeyiz — çıkış ipucu göster, tekrar basarsa çık
-  if (location.hash === '#start' || location.hash === '') {
-    setHashSilent('root');
-    showExitHint();
-    return;
-  }
-
+  // 4. Kök dizindeyiz — çıkış ipucu göster
+  showExitHint();
   setHashSilent('root');
 });
 
@@ -1300,6 +1296,14 @@ function showExitHint() {
 function setHashSilent(hash) {
   navigating = true;
   location.hash = hash;
+  setTimeout(() => { navigating = false; }, 100);
+}
+
+// Modal açılırken hash'e bir adım ekle (geri tuşu modalı kapatsın)
+function pushModalHash() {
+  const cur = location.hash;
+  navigating = true;
+  history.pushState(null, '', cur + '_m');
   setTimeout(() => { navigating = false; }, 100);
 }
 
@@ -1723,7 +1727,7 @@ function renderMoveCatList(includeRoot) {
   </div>`;
   const excluded = new Set(moveFolderIds);
   // Özel klasörler hariç normal klasörler
-  const normalFolders = folders.filter(f => !excluded.has(f.id) && f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+  const normalFolders = folders.filter(f => !excluded.has(f.id) && f.id !== FAVORITES_ID && f.id !== TRASH_ID).sort((a,b) => a.name.localeCompare(b.name, 'tr'));
   // Favoriler en üstte
   const favFolder = folders.find(f => f.id === FAVORITES_ID && !excluded.has(f.id));
   // Çöp Kutusu en altta
@@ -1797,7 +1801,7 @@ function renderCatManage() {
     if (parentId === null) {
       const fav = folderList.find(f => f.id === FAVORITES_ID);
       const trash = folderList.find(f => f.id === TRASH_ID);
-      const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+      const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID).sort((a,b) => a.name.localeCompare(b.name, 'tr'));
       folderList = [...(fav?[fav]:[]), ...normal, ...(trash?[trash]:[])];
     }
     return folderList.map(f => {
@@ -2188,7 +2192,7 @@ function openExportModal() {
   let folderList = folders.filter(f => f.parentId === null);
   const fav = folderList.find(f => f.id === FAVORITES_ID);
   const trash = folderList.find(f => f.id === TRASH_ID);
-  const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+  const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID).sort((a,b) => a.name.localeCompare(b.name, "tr"));
   folderList = [...(fav?[fav]:[]), ...normal, ...(trash?[trash]:[])];
   list.innerHTML = folderList.map(f => {
     const count = countAllLinks(f.id);
