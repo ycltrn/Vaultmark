@@ -1257,15 +1257,17 @@ window.addEventListener('hashchange', () => {
     return;
   }
 
-  // 2. Başka bir modal açıksa kapat — çıkış sorusu sorma, hash'i geri yükle!
+  // 2. Başka bir modal açıksa kapat — sadece kapat, hash zaten geri gitti
   const modals = [...document.querySelectorAll('.modal-overlay.open')];
   if (modals.length) {
     const lastModal = modals[modals.length - 1];
     lastModal.classList.remove('open');
     if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
     if (lastModal.id === 'settingsModal') closeThemePalette();
-    // Hash'i mevcut konuma geri yükle (navStack'e göre)
-    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
+    // Hash'i navStack'e göre geri yükle, history'e yeni adım ekleme
+    navigating = true;
+    history.replaceState(null, '', '#' + (navStack.length > 0 ? 'depth' + navStack.length : 'root'));
+    setTimeout(() => { navigating = false; }, 100);
     return;
   }
 
@@ -1301,8 +1303,10 @@ function setHashSilent(hash) {
 
 // Modal açılırken hash'e bir adım ekle (geri tuşu modalı kapatsın)
 function pushModalHash() {
-  const cur = location.hash;
+  // Modal açılırken history'e bir adım ekle
+  // Geri tuşu bu adımı tüketir → hashchange → modal kapanır → navStack sağlam kalır
   navigating = true;
+  const cur = location.hash || '#root';
   history.pushState(null, '', cur + '_m');
   setTimeout(() => { navigating = false; }, 100);
 }
@@ -1907,7 +1911,8 @@ function deleteSelectedFolders() {
 function openCatModal() {
   selectedFoldersMgr.clear();
   renderCatManage();
-  document.getElementById('catModal').classList.add('open');
+  pushModalHash();
+  document.getElementById("catModal").classList.add("open");
 }
 
 // ===== ADD / EDIT LINK =====
@@ -1937,7 +1942,8 @@ function openAddLinkModal() {
   // Pre-select current folder
   const opts = document.querySelectorAll('#modalCatSelect .cat-option');
   opts.forEach(o => { if (o.dataset.id === currentFolderId) o.classList.add('selected'); });
-  document.getElementById('linkModal').classList.add('open');
+  pushModalHash();
+  document.getElementById("linkModal").classList.add("open");
   setTimeout(async () => {
     const input = document.getElementById('urlInput');
     if (!input.value) {
@@ -2204,7 +2210,8 @@ function openExportModal() {
       <span style="color:var(--text2);">›</span>
     </div>`;
   }).join('');
-  document.getElementById('exportModal').classList.add('open');
+  pushModalHash();
+  document.getElementById("exportModal").classList.add("open");
 }
 
 function buildExportHTML(title, linkList) {
@@ -3370,7 +3377,8 @@ function openSettingsModal() {
   document.getElementById('defaultFolderSortInput').value = settings.defaultFolderSortMode;
   document.getElementById('trashDaysInput').value = settings.trashDays ?? 30;
   updateSettingsPreview();
-  document.getElementById('settingsModal').classList.add('open');
+  pushModalHash();
+  document.getElementById("settingsModal").classList.add("open");
 }
 
 function saveSettings() {
