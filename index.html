@@ -202,6 +202,9 @@ self.addEventListener('fetch', e => {
     .modal-handle{width:44px;height:5px;background:var(--border);border-radius:3px;margin:0 auto 20px;opacity:0.8;}
     .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:19px;margin-bottom:18px;}
     .modal-title span{color:var(--accent);}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+    .modal-header .modal-title{margin-bottom:0;}
+    .modal-close-btn{background:var(--surface2);border:none;color:var(--text2);width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     .input-group{margin-bottom:13px;}
     .input-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;display:block;}
     .input-field{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
@@ -393,7 +396,7 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="linkModal" onclick="closeOnBg(event,'linkModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="linkModalTitle">Yeni <span>Link</span> Ekle</div>
+    <div class="modal-header"><div class="modal-title" id="linkModalTitle">Yeni <span>Link</span> Ekle</div><button class="modal-close-btn" onclick="document.getElementById('linkModal').classList.remove('open')">✕</button></div>
     <div class="input-group">
       <label class="input-label">Link URL</label>
       <input type="url" class="input-field" id="urlInput"
@@ -422,7 +425,7 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="catModal" onclick="closeOnBg(event,'catModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">📁 <span>Klasörlerim</span></div>
+    <div class="modal-header"><div class="modal-title">📁 <span>Klasörlerim</span></div><button class="modal-close-btn" onclick="document.getElementById('catModal').classList.remove('open')">✕</button></div>
     <div class="fld-multibar">
       <button class="fld-mb-btn" id="selectAllFoldersBtn" onclick="selectAllFolders()">☐ Tümünü Seç</button>
       <button class="fld-mb-btn" style="color:#26c6da;border-color:#26c6da;" onclick="moveFolderAsSubfolder()">↳ Alt Klasöre Taşı</button>
@@ -443,7 +446,7 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="moveModal" onclick="closeOnBg(event,'moveModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">📁 <span>Taşı</span></div>
+    <div class="modal-header"><div class="modal-title">📁 <span>Taşı</span></div><button class="modal-close-btn" onclick="document.getElementById('moveModal').classList.remove('open')">✕</button></div>
     <div class="section-sub" id="moveModalSub"></div>
     <div id="moveCatList"></div>
     <button class="save-btn" onclick="confirmMove()">Taşı</button>
@@ -454,7 +457,7 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="exportModal" onclick="closeOnBg(event,'exportModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">↓ <span>Yedek & Aktar</span></div>
+    <div class="modal-header"><div class="modal-title">↓ <span>Yedek & Aktar</span></div><button class="modal-close-btn" onclick="document.getElementById('exportModal').classList.remove('open')">✕</button></div>
 
     <div class="input-label" style="margin-bottom:10px;">📤 Dışa Aktar</div>
     <div class="export-opt" onclick="openExportSaveModal('all')">
@@ -571,7 +574,7 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="settingsModal" onclick="closeOnBg(event,'settingsModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">⚙️ <span>Ayarlar</span></div>
+    <div class="modal-header"><div class="modal-title">⚙️ <span>Ayarlar</span></div><button class="modal-close-btn" onclick="document.getElementById('settingsModal').classList.remove('open');closeThemePalette()">✕</button></div>
 
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div style="background:var(--surface2);border-radius:12px;padding:14px;">
@@ -1253,9 +1256,7 @@ function showExitHint() {
   setTimeout(() => { _exitHintActive = false; }, 2000);
 }
 
-function pushModalHash() {
-  history.pushState(null, '');
-}
+function pushModalHash() { /* artık kullanılmıyor */ }
 
 function setHashSilent(hash) {
   history.replaceState(null, '', '#' + hash);
@@ -1264,25 +1265,20 @@ function setHashSilent(hash) {
 let navigating = false;
 
 window.addEventListener('popstate', () => {
-  // 1. Modal açıksa kapat ve tüketilen adımı geri koy
+  // Modal açıksa hiçbir şey yapma — modal X ile veya dışına tıklayarak kapanır
   const allModals = [...document.querySelectorAll('.modal-overlay.open')];
   if (allModals.length) {
-    const lastModal = allModals[allModals.length - 1];
-    lastModal.classList.remove('open');
-    if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
-    if (lastModal.id === 'settingsModal') closeThemePalette();
-    if (lastModal.id === 'confirmModal') { confirmCallback = null; }
-    history.pushState(null, ''); // Tüketilen adımı geri koy
+    history.pushState(null, '');
     return;
   }
 
-  // 2. Klasör içindeysek üste çık
+  // Klasör içindeysek üste çık
   if (navStack.length > 0) {
     navBack();
     return;
   }
 
-  // 3. Kök — çıkış ipucu, adımı geri koy
+  // Kök — çıkış ipucu
   showExitHint();
   history.pushState(null, '');
 });
