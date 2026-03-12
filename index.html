@@ -1264,7 +1264,7 @@ function setHashSilent(hash) {
 let navigating = false;
 
 window.addEventListener('popstate', () => {
-  // 1. Modal açıksa kapat, adımı geri koy
+  // 1. Modal açıksa kapat — history adımı zaten tüketildi, yenisini ekleme
   const allModals = [...document.querySelectorAll('.modal-overlay.open')];
   if (allModals.length) {
     const lastModal = allModals[allModals.length - 1];
@@ -1272,7 +1272,11 @@ window.addEventListener('popstate', () => {
     if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
     if (lastModal.id === 'settingsModal') closeThemePalette();
     if (lastModal.id === 'confirmModal') { confirmCallback = null; }
-    history.pushState(null, '');
+    // Modal kapandı, adım tüketildi — ama navStack için bir adım geri koymalıyız
+    // ki sonraki geri tuşu klasörden çıksın, uygulamadan değil
+    if (navStack.length > 0) {
+      history.pushState(null, '');
+    }
     return;
   }
 
