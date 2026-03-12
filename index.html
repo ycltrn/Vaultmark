@@ -3390,7 +3390,7 @@ function updateRecentBtn() {
 // ===== SORT MODE =====
 const sortModes = ['manuel', 'a-z', 'z-a', 'yeni', 'eski'];
 const sortLabels = ['Manuel', 'A→Z', 'Z→A', 'Yeni→Eski', 'Eski→Yeni'];
-let currentSortMode = 0;
+let currentSortMode = settings.defaultSortMode || 0;
 
 function toggleSortDropdown(e) {
   e.stopPropagation();
@@ -3431,7 +3431,7 @@ function getSortedLinks(linkList) {
   return sorted;
 }
 
-let currentFolderSortMode = 0;
+let currentFolderSortMode = settings.defaultFolderSortMode || 0;
 
 function setFolderSortMode(idx) {
   currentFolderSortMode = idx;
