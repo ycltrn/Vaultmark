@@ -204,7 +204,7 @@ self.addEventListener('fetch', e => {
     .modal-title span{color:var(--accent);}
     .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
     .modal-header .modal-title{margin-bottom:0;}
-    .modal-close-btn{background:var(--surface2);border:none;color:var(--text2);width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .modal-close-btn{background:var(--surface2);border:1.5px solid var(--border);color:#aaa;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     .input-group{margin-bottom:13px;}
     .input-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;display:block;}
     .input-field{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
@@ -485,7 +485,7 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="exportSaveModal" onclick="closeOnBg(event,'exportSaveModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">💾 <span>Kaydet</span></div>
+    <div class="modal-header"><div class="modal-title">💾 <span>Kaydet</span></div><button class="modal-close-btn" onclick="document.getElementById('exportSaveModal').classList.remove('open')">✕</button></div>
 
     <!-- Dosya adı -->
     <div class="input-label" style="margin-bottom:6px;">Dosya Adı</div>
@@ -3887,9 +3887,8 @@ function moveLinkDown(id) {
 save();
 render();
 initAppLock();
-// Başlangıç history adımı — ilk geri tuşu çıkış ipucu gösterir
-history.replaceState(null, '');
-history.pushState(null, '');
+// 10 boş history adımı — geri tuşu tamponu (TWA'da erken kapanmayı önler)
+for (let i = 0; i < 10; i++) history.pushState(null, '');
 </script>
 </div><!-- /scroll-wrap -->
 </body>
