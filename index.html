@@ -84,8 +84,7 @@ self.addEventListener('fetch', e => {
     #scroll-wrap{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:120px;}
 
     /* HEADER */
-    .header{background:var(--bg);padding:12px 16px 14px;position:fixed;top:0;left:0;right:0;z-index:100;border-bottom:1px solid var(--border);}
-    #header-spacer{height:0px;}
+    .header{background:var(--bg);padding:12px 16px 14px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border);}
     .header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,var(--border) 20%,var(--border) 80%,transparent);}
     .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;}
     .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;line-height:1.1;display:flex;align-items:center;gap:8px;color:var(--text);flex-shrink:0;}
@@ -298,6 +297,7 @@ self.addEventListener('fetch', e => {
   </style>
 </head>
 <body>
+<div id="scroll-wrap">
 <div class="toast" id="toast"></div>
 
 <!-- HEADER -->
@@ -355,7 +355,6 @@ self.addEventListener('fetch', e => {
   </div>
 
 <!-- BREADCRUMB -->
-<div id="scroll-wrap">
 <div class="breadcrumb" id="breadcrumb"></div>
 
 <!-- MULTIBAR -->
@@ -1250,19 +1249,6 @@ let navigating = false; // navigate() içinde hash değişince hashchange'i enge
 window.addEventListener('hashchange', () => {
   if (navigating) return;
 
-  // Hash 'start' e düştüyse → kök dizinde 2. geri → çıkış onayı
-  if (location.hash === '#start' || location.hash === '') {
-    setHashSilent('root');
-    showConfirm('👋', 'Çıkış', 'Uygulamadan çıkmak istiyor musunuz?', () => {
-      navigator.app && navigator.app.exitApp
-        ? navigator.app.exitApp()
-        : (window.AndroidInterface && window.AndroidInterface.exitApp
-            ? window.AndroidInterface.exitApp()
-            : history.go(-(history.length + 10)));
-    }, 'Evet');
-    return;
-  }
-
   // 1. Confirm modal açıksa kapat
   if (document.getElementById('confirmModal').classList.contains('open')) {
     document.getElementById('confirmModal').classList.remove('open');
@@ -1271,12 +1257,11 @@ window.addEventListener('hashchange', () => {
     return;
   }
 
-  // 2. Başka bir modal açıksa kapat
+  // 2. Başka bir modal açıksa kapat — çıkış sorusu sorma!
   const modals = [...document.querySelectorAll('.modal-overlay.open')];
   if (modals.length) {
     const lastModal = modals[modals.length - 1];
     lastModal.classList.remove('open');
-    // Duplicate modal kapatılırken state temizle
     if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
     if (lastModal.id === 'settingsModal') closeThemePalette();
     setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
@@ -1290,9 +1275,27 @@ window.addEventListener('hashchange', () => {
     return;
   }
 
-  // 4. Kök dizindeyiz — root'ta tut
+  // 4. Kök dizindeyiz — çıkış ipucu göster, tekrar basarsa çık
+  if (location.hash === '#start' || location.hash === '') {
+    setHashSilent('root');
+    showExitHint();
+    return;
+  }
+
   setHashSilent('root');
 });
+
+let _exitHintActive = false;
+function showExitHint() {
+  if (_exitHintActive) {
+    // İkinci kez basıldı — çık
+    history.go(-50);
+    return;
+  }
+  _exitHintActive = true;
+  showToast('👋 Çıkmak için tekrar basınız');
+  setTimeout(() => { _exitHintActive = false; }, 2000);
+}
 
 function setHashSilent(hash) {
   navigating = true;
@@ -1310,10 +1313,6 @@ function render() {
   renderContent();
   renderCategoryBar_unused();
   updateCount();
-  // Header yüksekliğine göre scroll-wrap padding ayarla
-  const hdr = document.querySelector('.header');
-  const sw = document.getElementById('scroll-wrap');
-  if (hdr && sw) sw.style.paddingTop = hdr.offsetHeight + 'px';
 }
 
 function renderBreadcrumb() {
