@@ -1715,9 +1715,20 @@ function renderMoveCatList(includeRoot) {
     ${moveTargetId===null?'<span style="margin-left:auto;color:var(--accent);">✓</span>':''}
   </div>`;
   const excluded = new Set(moveFolderIds);
-  folders.filter(f => !excluded.has(f.id)).forEach(f => {
+  // Özel klasörler hariç normal klasörler
+  const normalFolders = folders.filter(f => !excluded.has(f.id) && f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+  // Favoriler en üstte
+  const favFolder = folders.find(f => f.id === FAVORITES_ID && !excluded.has(f.id));
+  // Çöp Kutusu en altta
+  const trashFolder = folders.find(f => f.id === TRASH_ID && !excluded.has(f.id));
+  const orderedFolders = [
+    ...(favFolder ? [favFolder] : []),
+    ...normalFolders,
+    ...(trashFolder ? [trashFolder] : [])
+  ];
+  orderedFolders.forEach(f => {
     html += `<div class="move-opt ${moveTargetId===f.id?'selected':''}" onclick="selectMoveTarget('${f.id}')">
-      <span style="font-size:18px;">📁</span>
+      <span style="font-size:18px;">${f.id===TRASH_ID?'🗑':f.id===FAVORITES_ID?'⭐':'📁'}</span>
       <span style="font-size:14px;">${getFolderPath(f.id)}</span>
       ${moveTargetId===f.id?'<span style="margin-left:auto;color:var(--accent);">✓</span>':''}
     </div>`;
@@ -3446,11 +3457,16 @@ function setFolderSortMode(idx) {
 }
 
 function getSortedFolders(folderList) {
-  if (currentFolderSortMode === 0) return folderList;
-  const sorted = [...folderList];
-  if (currentFolderSortMode === 1) sorted.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
-  if (currentFolderSortMode === 2) sorted.sort((a,b) => b.name.localeCompare(a.name, 'tr'));
-  return sorted;
+  const fav = folderList.find(f => f.id === FAVORITES_ID);
+  const trash = folderList.find(f => f.id === TRASH_ID);
+  const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+  if (currentFolderSortMode === 1) normal.sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+  if (currentFolderSortMode === 2) normal.sort((a,b) => b.name.localeCompare(a.name, 'tr'));
+  return [
+    ...(fav ? [fav] : []),
+    ...normal,
+    ...(trash ? [trash] : [])
+  ];
 }
 
 // ===== FOLDER COLOR PICKER =====
