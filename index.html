@@ -1259,20 +1259,25 @@ function pushModalHash() {}
 function setHashSilent(hash) {}
 
 window.addEventListener('popstate', () => {
-  // Modal açıksa hiçbir şey yapma
+  // Her zaman adımı geri koy — TWA erken kapatmasın
+  history.pushState(null, '', location.href);
+
+  // Modal açıksa hiçbir şey yapma (X veya dışına dokun)
   if (document.querySelector('.modal-overlay.open')) return;
 
   // Klasör içindeysek üste çık
   if (navStack.length > 0) {
     navBack();
-    history.pushState(null, '', location.href);
     return;
   }
 
-  // Kök — çıkış ipucu veya çıkış
-  if (_exitHintActive) return; // ikinci basış — çıkışa izin ver
+  // Kök — toast göster, ikinci basışta çıkışa izin ver
+  if (_exitHintActive) {
+    // history adımını geri koymadık — TWA çıkacak
+    history.go(-2);
+    return;
+  }
   showExitHint();
-  history.pushState(null, '', location.href);
 });
 
 
