@@ -1378,10 +1378,10 @@ function renderContent() {
   }
 
   if (subFolders.length) {
-    // Favoriler klasörünü her zaman en üste al
-    const pinned = getSortedFolders(subFolders.filter(f => f.pinned));
-    const normal = getSortedFolders(subFolders.filter(f => !f.pinned));
-    html += [...pinned, ...normal].map(f => renderFolderCard(f)).join('');
+    const fav = subFolders.filter(f => f.id === FAVORITES_ID);
+    const trash = subFolders.filter(f => f.id === TRASH_ID);
+    const normal = getSortedFolders(subFolders.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID));
+    html += [...fav, ...normal, ...trash].map(f => renderFolderCard(f)).join('');
     if (folderLinks.length) html += `<div class="divider"></div>`;
   }
 
@@ -1785,7 +1785,15 @@ let selectedFoldersMgr = new Set();
 
 function renderCatManage() {
   function renderLevel(parentId, depth) {
-    return folders.filter(f => f.parentId === parentId).map(f => {
+    let folderList = folders.filter(f => f.parentId === parentId);
+    // Favoriler en üstte, Çöp Kutusu en altta
+    if (parentId === null) {
+      const fav = folderList.find(f => f.id === FAVORITES_ID);
+      const trash = folderList.find(f => f.id === TRASH_ID);
+      const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+      folderList = [...(fav?[fav]:[]), ...normal, ...(trash?[trash]:[])];
+    }
+    return folderList.map(f => {
       const linkCount = countAllLinks(f.id);
       const checked = selectedFoldersMgr.has(f.id);
       return `
@@ -2170,7 +2178,12 @@ document.getElementById('confirmOkBtn').onclick = () => {
 // ===== EXPORT =====
 function openExportModal() {
   const list = document.getElementById('exportCatList');
-  list.innerHTML = folders.filter(f => f.parentId === null).map(f => {
+  let folderList = folders.filter(f => f.parentId === null);
+  const fav = folderList.find(f => f.id === FAVORITES_ID);
+  const trash = folderList.find(f => f.id === TRASH_ID);
+  const normal = folderList.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID);
+  folderList = [...(fav?[fav]:[]), ...normal, ...(trash?[trash]:[])];
+  list.innerHTML = folderList.map(f => {
     const count = countAllLinks(f.id);
     return `<div class="export-opt" onclick="exportSingle('${f.id}')">
       <div>
