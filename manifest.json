@@ -2,29 +2,27 @@
   "name": "Vaultmark",
   "short_name": "Vaultmark",
   "description": "Akıllı Link Yöneticisi",
-  "start_url": "https://ycltrn.github.io/Vaultmark",
+  "start_url": "https://ycltrn.github.io/Vaultmark/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "icons": [
     {
-      "src": "data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'&gt;&lt;rect width='192' height='192' rx='32' fill='%230a0a0a'/&gt;&lt;g fill='none' stroke-linecap='round' stroke-linejoin='round'&gt;&lt;line x1='40' y1='48' x2='40' y2='144' stroke='%23f0f0f0' stroke-width='16'/&gt;&lt;line x1='40' y1='48' x2='80' y2='144' stroke='%23f0f0f0' stroke-width='16'/&gt;&lt;line x1='80' y1='144' x2='120' y2='48' stroke='%23e8ff47' stroke-width='16'/&gt;&lt;line x1='120' y1='48' x2='120' y2='144' stroke='%23e8ff47' stroke-width='16'/&gt;&lt;/g&gt;&lt;/svg&gt;",
+      "src": "icon-512.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'&gt;&lt;rect width='512' height='512' rx='80' fill='%230a0a0a'/&gt;&lt;g fill='none' stroke-linecap='round' stroke-linejoin='round'&gt;&lt;line x1='100' y1='120' x2='100' y2='392' stroke='%23f0f0f0' stroke-width='40'/&gt;&lt;line x1='100' y1='120' x2='210' y2='392' stroke='%23f0f0f0' stroke-width='40'/&gt;&lt;line x1='210' y1='392' x2='320' y2='120' stroke='%23e8ff47' stroke-width='40'/&gt;&lt;line x1='320' y1='120' x2='320' y2='392' stroke='%23e8ff47' stroke-width='40'/&gt;&lt;/g&gt;&lt;/svg&gt;",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "categories": [
-    "productivity",
-    "utilities"
-  ],
-  "lang": "en",
-  "id": "Vaultmark"
+  "categories": ["productivity", "utilities"],
+  "lang": "tr",
+  "id": "vaultmark",
+  "scope": "https://ycltrn.github.io/Vaultmark/"
 }
