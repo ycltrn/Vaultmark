@@ -1901,7 +1901,6 @@ function openAddLinkModal() {
   document.getElementById('linkSaveBtn').innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Kaydet`;
   document.getElementById('urlInput').value = '';
   document.getElementById('titleInput').value = '';
-  document.getElementById('noteInput').value = '';
   document.getElementById('urlHint').style.display = 'none';
   renderModalCats(currentFolderId);
   // Pre-select current folder
@@ -3420,8 +3419,14 @@ function getSortedLinks(linkList) {
   const sorted = [...linkList];
   if (currentSortMode === 1) sorted.sort((a,b) => (a.title||'').localeCompare(b.title||'', 'tr'));
   if (currentSortMode === 2) sorted.sort((a,b) => (b.title||'').localeCompare(a.title||'', 'tr'));
-  if (currentSortMode === 3) sorted.sort((a,b) => (b.date||'').localeCompare(a.date||''));
-  if (currentSortMode === 4) sorted.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  // Tarih sıralaması: "12.03.2026" formatını yıl.ay.gün'e çevir
+  const toSortable = l => {
+    const d = (l.date||'').split('.');
+    const dateStr = d.length===3 ? d[2]+d[1]+d[0] : (l.date||'');
+    return dateStr + (l.time||'');
+  };
+  if (currentSortMode === 3) sorted.sort((a,b) => toSortable(b).localeCompare(toSortable(a)));
+  if (currentSortMode === 4) sorted.sort((a,b) => toSortable(a).localeCompare(toSortable(b)));
   return sorted;
 }
 
