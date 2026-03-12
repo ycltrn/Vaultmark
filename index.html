@@ -1223,11 +1223,16 @@ function navigate(folderId, folderName) {
     currentFolderId = null;
     navStack = [];
     unlockedFolders.clear();
-    setHashSilent('root');
+    navigating = true;
+    history.replaceState(null, '', '#root');
+    setTimeout(() => { navigating = false; }, 100);
   } else {
     navStack.push({id: currentFolderId, name: currentFolderId ? getFolderById(currentFolderId).name : 'Ana Sayfa'});
     currentFolderId = folderId;
-    setHashSilent('depth' + navStack.length);
+    // Gerçek history adımı ekle — geri tuşu bunu tüketecek
+    navigating = true;
+    history.pushState(null, '', '#depth' + navStack.length);
+    setTimeout(() => { navigating = false; }, 100);
   }
   cancelMultiSelect();
   render();
@@ -1249,38 +1254,35 @@ let navigating = false; // navigate() içinde hash değişince hashchange'i enge
 window.addEventListener('hashchange', () => {
   if (navigating) return;
 
-  // 1. Confirm modal açıksa kapat
-  if (document.getElementById('confirmModal').classList.contains('open')) {
-    document.getElementById('confirmModal').classList.remove('open');
-    confirmCallback = null;
-    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
-    return;
-  }
-
-  // 2. Başka bir modal açıksa kapat — sadece kapat, hash zaten geri gitti
-  const modals = [...document.querySelectorAll('.modal-overlay.open')];
-  if (modals.length) {
-    const lastModal = modals[modals.length - 1];
+  // 1. Herhangi bir modal açıksa kapat — history zaten geri gitti, sadece UI'ı kapat
+  const allModals = [...document.querySelectorAll('.modal-overlay.open')];
+  if (allModals.length) {
+    const lastModal = allModals[allModals.length - 1];
     lastModal.classList.remove('open');
     if (lastModal.id === 'dupLinkModal') { _dupPending = null; _dupSelectedFolderId = null; }
     if (lastModal.id === 'settingsModal') closeThemePalette();
-    // Hash'i navStack'e göre geri yükle, history'e yeni adım ekleme
+    if (lastModal.id === 'confirmModal') { confirmCallback = null; }
+    // Hash'i doğru konuma replaceState ile yükle (yeni adım ekleme)
     navigating = true;
     history.replaceState(null, '', '#' + (navStack.length > 0 ? 'depth' + navStack.length : 'root'));
     setTimeout(() => { navigating = false; }, 100);
     return;
   }
 
-  // 3. Klasör içindeysek üste çık
+  // 2. Klasör içindeysek üste çık
   if (navStack.length > 0) {
     navBack();
-    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
+    navigating = true;
+    history.replaceState(null, '', '#' + (navStack.length > 0 ? 'depth' + navStack.length : 'root'));
+    setTimeout(() => { navigating = false; }, 100);
     return;
   }
 
-  // 4. Kök dizindeyiz — çıkış ipucu göster
+  // 3. Kök dizindeyiz — çıkış ipucu göster
   showExitHint();
-  setHashSilent('root');
+  navigating = true;
+  history.replaceState(null, '', '#root');
+  setTimeout(() => { navigating = false; }, 100);
 });
 
 let _exitHintActive = false;
@@ -1303,12 +1305,7 @@ function setHashSilent(hash) {
 
 // Modal açılırken hash'e bir adım ekle (geri tuşu modalı kapatsın)
 function pushModalHash() {
-  // Modal açılırken history'e bir adım ekle
-  // Geri tuşu bu adımı tüketir → hashchange → modal kapanır → navStack sağlam kalır
-  navigating = true;
-  const cur = location.hash || '#root';
-  history.pushState(null, '', cur + '_m');
-  setTimeout(() => { navigating = false; }, 100);
+  // Artık kullanılmıyor - modal history push kaldırıldı
 }
 
 function getFolderById(id) { return folders.find(f => f.id === id); }
@@ -3916,11 +3913,10 @@ save();
 render();
 initAppLock();
 navigating = true;
-location.hash = 'start';
-setTimeout(() => {
-  location.hash = 'root';
-  navigating = false;
-}, 150);
+history.replaceState(null, '', '#root');
+// İlk geri tuşu için başlangıç adımı ekle
+history.pushState(null, '', '#root');
+setTimeout(() => { navigating = false; }, 150);
 </script>
 </div><!-- /scroll-wrap -->
 </body>
