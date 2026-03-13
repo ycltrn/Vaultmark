@@ -3892,7 +3892,7 @@ navigating = true;
 location.hash = 'start';
 setTimeout(() => {
   location.hash = 'root';
-  navigating = false;
+  setTimeout(() => { navigating = false; }, 300);
 }, 150);
 </script>
 </div><!-- /scroll-wrap -->
