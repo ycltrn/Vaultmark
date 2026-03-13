@@ -735,7 +735,10 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="infoModal" onclick="closeOnBg(event,'infoModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">ℹ <span>Link Bilgisi</span></div>
+    <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>ℹ Link Bilgisi</span>
+      <button onclick="closeModal('infoModal')" style="background:none;border:1.5px solid var(--border);color:#aaa;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
     <div id="infoModalContent"></div>
   </div>
 </div>
@@ -905,9 +908,12 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="moveSingleModal" onclick="closeOnBg(event,'moveSingleModal')">
   <div class="modal" style="max-height:75vh;">
     <div class="modal-handle"></div>
-    <div class="modal-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
-      Taşı
+    <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+        Taşı
+      </span>
+      <button onclick="closeModal('moveSingleModal')" style="background:none;border:1.5px solid var(--border);color:#aaa;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="moveSingleTitle"></div>
     <input type="text" class="input-field" placeholder="🔍 Klasör ara..." oninput="renderMoveSingleList(this.value)" style="margin-bottom:12px;">
@@ -928,7 +934,10 @@ self.addEventListener('fetch', e => {
 <div class="modal-overlay" id="linkActionsModal" onclick="closeOnBg(event,'linkActionsModal')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="linkActionsTitle" style="font-size:15px;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <span id="linkActionsTitle" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;margin-right:8px;"></span>
+      <button onclick="closeModal('linkActionsModal')" style="background:none;border:1.5px solid var(--border);color:#aaa;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
+    </div>
     <div id="linkActionsContent"></div>
   </div>
 </div>
