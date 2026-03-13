@@ -1226,10 +1226,11 @@ function navigate(folderId, folderName) {
     currentFolderId = null;
     navStack = [];
     unlockedFolders.clear();
+    setHashSilent('root');
   } else {
     navStack.push({id: currentFolderId, name: currentFolderId ? getFolderById(currentFolderId).name : 'Ana Sayfa'});
     currentFolderId = folderId;
-    history.pushState(null, '', location.href);
+    setHashSilent('depth' + navStack.length);
   }
   cancelMultiSelect();
   render();
@@ -1246,39 +1247,40 @@ function navBack() {
 }
 
 // ===== ANDROID BACK BUTTON =====
+let navigating = false;
 let _exitHintActive = false;
-let _backBusy = false;
 
 function pushModalHash() {}
-function setHashSilent(hash) {}
+function setHashSilent(hash) {
+  navigating = true;
+  location.hash = hash;
+  setTimeout(() => { navigating = false; }, 100);
+}
 
-window.addEventListener('popstate', () => {
-  if (_backBusy) return;
-  _backBusy = true;
-  setTimeout(() => { _backBusy = false; }, 400);
+window.addEventListener('hashchange', () => {
+  if (navigating) return;
 
-  // Modal açıksa adımı geri koy, dur
+  // Modal açıksa hiçbir şey yapma
   if (document.querySelector('.modal-overlay.open')) {
-    history.pushState(null, '', location.href);
+    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
     return;
   }
 
-  // Klasör içindeysek üste çık, adımı geri koy
+  // Klasör içindeysek üste çık
   if (navStack.length > 0) {
     navBack();
-    history.pushState(null, '', location.href);
+    setHashSilent(navStack.length > 0 ? 'depth' + navStack.length : 'root');
     return;
   }
 
-  // Ana sayfadayız
+  // Ana sayfadayız — çıkış
   if (!_exitHintActive) {
-    // İlk basış — toast göster, adımı geri koy
     _exitHintActive = true;
     showToast('👋 Çıkmak için tekrar basınız');
     setTimeout(() => { _exitHintActive = false; }, 2000);
-    history.pushState(null, '', location.href);
+    setHashSilent('root');
   }
-  // İkinci basış — adımı geri koymuyoruz, TWA kapanıyor
+  // İkinci basış — setHashSilent çağırmıyoruz, uygulama kapanıyor
 });
 
 
@@ -3886,7 +3888,12 @@ function moveLinkDown(id) {
 save();
 render();
 initAppLock();
-history.pushState(null, '');
+navigating = true;
+location.hash = 'start';
+setTimeout(() => {
+  location.hash = 'root';
+  navigating = false;
+}, 150);
 </script>
 </div><!-- /scroll-wrap -->
 </body>
