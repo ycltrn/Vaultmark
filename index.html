@@ -478,6 +478,15 @@ self.addEventListener('fetch', e => {
       <div style="font-size:12px;color:var(--text2);margin-top:4px;">Vaultmark, Chrome, Firefox, Safari yedekleri desteklenir</div>
     </div>
     <input type="file" id="importFileInput" accept=".html,.htm" style="display:none" onchange="prepareImport(event)">
+
+    <div style="height:10px;"></div>
+
+    <div style="background:var(--surface2);border:1px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;" onclick="document.getElementById('historyImportFileInput').click()">
+      <div style="font-size:28px;margin-bottom:8px;">🕐</div>
+      <div style="font-size:14px;font-weight:500;">Chrome Geçmişinden İçe Aktar</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">Google Takeout'tan indirilen JSON dosyası</div>
+    </div>
+    <input type="file" id="historyImportFileInput" accept=".json" style="display:none" onchange="openHistoryImport(event)">
   </div>
 </div>
 
@@ -971,6 +980,59 @@ self.addEventListener('fetch', e => {
       <button class="modal-close-btn" onclick="closeModal('linkActionsModal')">✕</button>
     </div>
     <div id="linkActionsContent"></div>
+  </div>
+</div>
+
+<!-- CHROME GEÇMİŞİ IMPORT MODAL -->
+<div class="modal-overlay" id="historyImportModal" onclick="closeOnBg(event,'historyImportModal')">
+  <div class="modal" style="max-height:85vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">🕐 <span>Chrome Geçmişi</span></div>
+      <button class="modal-close-btn" onclick="closeModal('historyImportModal')">✕</button>
+    </div>
+
+    <!-- Adım 1: Filtre ayarları -->
+    <div id="historyStep1">
+      <div class="input-label" style="margin-bottom:8px;">📅 Tarih Aralığı</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Başlangıç</div>
+          <input type="date" id="historyDateFrom" class="input-field" style="margin-bottom:0;padding:10px 12px;">
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Bitiş</div>
+          <input type="date" id="historyDateTo" class="input-field" style="margin-bottom:0;padding:10px 12px;">
+        </div>
+      </div>
+
+      <div class="input-label" style="margin-bottom:8px;">🚫 Gereksiz Domainleri Filtrele</div>
+      <div onclick="toggleHistoryFilter()" id="historyFilterCard"
+        style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:2px solid var(--accent);border-radius:12px;cursor:pointer;margin-bottom:16px;">
+        <span style="font-size:20px;">🧹</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">Otomatik Filtrele</div>
+          <div style="font-size:11px;color:var(--text2);">google.com, googleapis.com, localhost vb. hariç tut</div>
+        </div>
+        <div id="historyFilterCheck" style="width:20px;height:20px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;">✓</div>
+      </div>
+
+      <div id="historyLoadingInfo" style="font-size:12px;color:var(--text2);margin-bottom:12px;display:none;">⏳ Dosya işleniyor, lütfen bekle...</div>
+
+      <button class="save-btn" onclick="processHistoryImport()">🔍 Geçmişi Tara</button>
+    </div>
+
+    <!-- Adım 2: Önizleme -->
+    <div id="historyStep2" style="display:none;">
+      <div id="historyPreviewInfo" style="font-size:13px;color:var(--text2);margin-bottom:12px;"></div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">İlk 200 sonuç gösteriliyor — hepsini aktarmak için direkt kaydet:</div>
+      <div id="historyPreviewList" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('historyStep2').style.display='none';document.getElementById('historyStep1').style.display='block';"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px;font-family:'Syne',sans-serif;font-weight:600;font-size:14px;cursor:pointer;">← Geri</button>
+        <button class="save-btn" style="flex:2;" onclick="confirmHistoryImport()">✅ Tümünü Aktar (<span id="historyImportCount">0</span>)</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2929,6 +2991,158 @@ function parseBookmarkHTML(html) {
 }
 
 function importFromHTML(e) { prepareImport(e); } // eski çağrılar için alias
+
+// ===== CHROME GEÇMİŞİ IMPORT =====
+let _historyData = [];
+let _historyFiltered = [];
+let _historyFilterEnabled = true;
+
+const FILTERED_DOMAINS = [
+  'google.com','googleapis.com','gstatic.com','googleusercontent.com',
+  'accounts.google.com','chrome://','localhost','127.0.0.1',
+  'googleadservices.com','doubleclick.net','googlesyndication.com',
+  'facebook.com/tr','analytics','tracking','ad.','ads.',
+  'newtab','chrome-extension://'
+];
+
+function toggleHistoryFilter() {
+  _historyFilterEnabled = !_historyFilterEnabled;
+  const check = document.getElementById('historyFilterCheck');
+  const card = document.getElementById('historyFilterCard');
+  if (_historyFilterEnabled) {
+    check.style.background = 'var(--accent)';
+    check.style.color = '#000';
+    check.textContent = '✓';
+    card.style.borderColor = 'var(--accent)';
+  } else {
+    check.style.background = 'var(--border)';
+    check.style.color = 'var(--text2)';
+    check.textContent = '○';
+    card.style.borderColor = 'var(--border)';
+  }
+}
+
+function openHistoryImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Varsayılan tarihleri ayarla
+  const today = new Date();
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(today.getMonth() - 6);
+  document.getElementById('historyDateTo').value = today.toISOString().slice(0,10);
+  document.getElementById('historyDateFrom').value = sixMonthsAgo.toISOString().slice(0,10);
+
+  document.getElementById('historyStep1').style.display = 'block';
+  document.getElementById('historyStep2').style.display = 'none';
+  document.getElementById('exportModal').classList.remove('open');
+
+  // Dosyayı oku
+  document.getElementById('historyLoadingInfo').style.display = 'block';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const json = JSON.parse(ev.target.result);
+      _historyData = json['Browser History'] || [];
+      document.getElementById('historyLoadingInfo').textContent = `✅ ${_historyData.length.toLocaleString()} kayıt yüklendi`;
+      document.getElementById('historyImportModal').classList.add('open');
+    } catch(err) {
+      showToast('⚠️ Geçersiz JSON dosyası');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function processHistoryImport() {
+  const dateFrom = document.getElementById('historyDateFrom').value;
+  const dateTo = document.getElementById('historyDateTo').value;
+
+  const fromTs = dateFrom ? new Date(dateFrom).getTime() * 1000 : 0;
+  const toTs = dateTo ? (new Date(dateTo).getTime() + 86400000) * 1000 : Infinity;
+
+  let results = _historyData.filter(item => {
+    if (!item.url) return false;
+    // Tarih filtresi
+    if (item.time_usec < fromTs || item.time_usec > toTs) return false;
+    // Domain filtresi
+    if (_historyFilterEnabled) {
+      const url = item.url.toLowerCase();
+      if (FILTERED_DOMAINS.some(d => url.includes(d))) return false;
+    }
+    return true;
+  });
+
+  // Tekrar edenleri temizle (aynı URL'yi bir kez al)
+  const seen = new Set();
+  results = results.filter(item => {
+    if (seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
+
+  // Tarihe göre sırala (yeniden eskiye)
+  results.sort((a, b) => b.time_usec - a.time_usec);
+
+  _historyFiltered = results;
+
+  // Önizleme göster
+  const preview = results.slice(0, 200);
+  document.getElementById('historyPreviewInfo').textContent =
+    `🔍 ${results.length.toLocaleString()} benzersiz link bulundu (${dateFrom} - ${dateTo})`;
+  document.getElementById('historyImportCount').textContent = results.length.toLocaleString();
+
+  const listEl = document.getElementById('historyPreviewList');
+  listEl.innerHTML = preview.map(item => {
+    const date = new Date(item.time_usec / 1000).toLocaleDateString('tr-TR');
+    const title = item.title || item.url;
+    const shortTitle = title.length > 50 ? title.slice(0,50) + '...' : title;
+    return `<div style="padding:10px 12px;background:var(--surface2);border-radius:10px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:3px;">${shortTitle}</div>
+      <div style="font-size:11px;color:var(--text2);">${getDomain(item.url)} · ${date}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('historyStep1').style.display = 'none';
+  document.getElementById('historyStep2').style.display = 'block';
+}
+
+function confirmHistoryImport() {
+  if (!_historyFiltered.length) return;
+
+  // Chrome Geçmişi klasörü oluştur
+  let histFolder = folders.find(f => f.name === 'Chrome Geçmişi');
+  if (!histFolder) {
+    histFolder = { id: uid(), name: 'Chrome Geçmişi', parentId: null, color: null };
+    folders.push(histFolder);
+  }
+
+  let added = 0;
+  _historyFiltered.forEach(item => {
+    // Zaten var mı kontrol et
+    if (links.find(l => l.url === item.url)) return;
+    const date = new Date(item.time_usec / 1000);
+    const dateStr = `${String(date.getDate()).padStart(2,'0')}.${String(date.getMonth()+1).padStart(2,'0')}.${date.getFullYear()}`;
+    links.push({
+      id: uid(),
+      title: item.title || getDomain(item.url),
+      url: item.url,
+      folderId: histFolder.id,
+      note: '',
+      date: dateStr,
+      favicon: `https://www.google.com/s2/favicons?domain=${getDomain(item.url)}&sz=32`
+    });
+    added++;
+  });
+
+  save();
+  render();
+  closeModal('historyImportModal');
+  showToast(`✅ ${added.toLocaleString()} link aktarıldı!`);
+  _historyFiltered = [];
+  _historyData = [];
+}
+
 
 function showTouchMoveMenu(srcId) {
   const src = getFolderById(srcId);
