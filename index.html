@@ -1247,37 +1247,38 @@ function navBack() {
 
 // ===== ANDROID BACK BUTTON =====
 let _exitHintActive = false;
-
-function showExitHint() {
-  if (_exitHintActive) return;
-  _exitHintActive = true;
-  showToast('👋 Çıkmak için tekrar basınız');
-  setTimeout(() => { _exitHintActive = false; }, 2000);
-}
+let _backBusy = false;
 
 function pushModalHash() {}
 function setHashSilent(hash) {}
 
 window.addEventListener('popstate', () => {
-  // Her zaman adımı geri koy — TWA erken kapatmasın
-  history.pushState(null, '', location.href);
+  if (_backBusy) return;
+  _backBusy = true;
+  setTimeout(() => { _backBusy = false; }, 400);
 
-  // Modal açıksa hiçbir şey yapma (X veya dışına dokun)
-  if (document.querySelector('.modal-overlay.open')) return;
+  // Modal açıksa adımı geri koy, dur
+  if (document.querySelector('.modal-overlay.open')) {
+    history.pushState(null, '', location.href);
+    return;
+  }
 
-  // Klasör içindeysek üste çık
+  // Klasör içindeysek üste çık, adımı geri koy
   if (navStack.length > 0) {
     navBack();
+    history.pushState(null, '', location.href);
     return;
   }
 
-  // Kök — toast göster, ikinci basışta çıkışa izin ver
-  if (_exitHintActive) {
-    // history adımını geri koymadık — TWA çıkacak
-    history.go(-2);
-    return;
+  // Ana sayfadayız
+  if (!_exitHintActive) {
+    // İlk basış — toast göster, adımı geri koy
+    _exitHintActive = true;
+    showToast('👋 Çıkmak için tekrar basınız');
+    setTimeout(() => { _exitHintActive = false; }, 2000);
+    history.pushState(null, '', location.href);
   }
-  showExitHint();
+  // İkinci basış — adımı geri koymuyoruz, TWA kapanıyor
 });
 
 
