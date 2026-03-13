@@ -1784,17 +1784,18 @@ function renderCatManage() {
     return folderList.map(f => {
       const linkCount = countAllLinks(f.id);
       const checked = selectedFoldersMgr.has(f.id);
+      const isSpecial = f.id === FAVORITES_ID || f.id === TRASH_ID;
       return `
         <div class="folder-mgr-item" style="margin-left:${depth*14}px;">
-          <div class="fld-check ${checked?'checked':''}" onclick="toggleFolderMgr('${f.id}')">
+          <div class="fld-check ${checked?'checked':''}" ${isSpecial ? '' : `onclick="toggleFolderMgr('${f.id}')"`} style="${isSpecial ? 'opacity:0.2;cursor:default;' : ''}">
             ${checked?'✓':''}
           </div>
           <div style="flex:1;">
             <div class="fld-name">📁 ${f.name}</div>
             <div class="fld-sub">${linkCount} link · ${getSubFolders(f.id).length} alt klasör</div>
           </div>
-          <button class="fld-btn" style="color:var(--text2);" onclick="renameFolder('${f.id}')">✎</button>
-          <button class="fld-btn" style="color:var(--danger);" onclick="confirmDeleteFolder('${f.id}')">✕</button>
+          ${isSpecial ? '' : `<button class="fld-btn" style="color:var(--text2);" onclick="renameFolder('${f.id}')">✎</button>`}
+          ${isSpecial ? '' : `<button class="fld-btn" style="color:var(--danger);" onclick="confirmDeleteFolder('${f.id}')">✕</button>`}
         </div>
         ${renderLevel(f.id, depth+1)}`;
     }).join('');
@@ -1810,7 +1811,7 @@ function toggleFolderMgr(id) {
 }
 
 function selectAllFolders() {
-  const visibleIds = folders.filter(f => f.id !== 'favorites').map(f => f.id);
+  const visibleIds = folders.filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID).map(f => f.id);
   const allSelected = visibleIds.every(id => selectedFoldersMgr.has(id));
   if (allSelected) {
     selectedFoldersMgr.clear();
