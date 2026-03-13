@@ -204,7 +204,7 @@ self.addEventListener('fetch', e => {
     .modal-title span{color:var(--accent);}
     .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
     .modal-header .modal-title{margin-bottom:0;}
-    .modal-close-btn{background:var(--surface2);border:1.5px solid var(--border);color:#aaa;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .modal-close-btn{background:var(--surface2);border:1.5px solid #555;color:#ccc;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     .input-group{margin-bottom:13px;}
     .input-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;display:block;}
     .input-field{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
@@ -737,7 +737,7 @@ self.addEventListener('fetch', e => {
     <div class="modal-handle"></div>
     <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;">
       <span>ℹ Link Bilgisi</span>
-      <button onclick="closeModal('infoModal')" style="background:none;border:1.5px solid var(--border);color:#aaa;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button class="modal-close-btn" onclick="closeModal('infoModal')">✕</button>
     </div>
     <div id="infoModalContent"></div>
   </div>
@@ -913,7 +913,7 @@ self.addEventListener('fetch', e => {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
         Taşı
       </span>
-      <button onclick="closeModal('moveSingleModal')" style="background:none;border:1.5px solid var(--border);color:#aaa;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button class="modal-close-btn" onclick="closeModal('moveSingleModal')">✕</button>
     </div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="moveSingleTitle"></div>
     <input type="text" class="input-field" placeholder="🔍 Klasör ara..." oninput="renderMoveSingleList(this.value)" style="margin-bottom:12px;">
@@ -936,7 +936,7 @@ self.addEventListener('fetch', e => {
     <div class="modal-handle"></div>
     <div class="modal-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <span id="linkActionsTitle" style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;margin-right:8px;"></span>
-      <button onclick="closeModal('linkActionsModal')" style="background:none;border:1.5px solid var(--border);color:#aaa;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
+      <button class="modal-close-btn" onclick="closeModal('linkActionsModal')">✕</button>
     </div>
     <div id="linkActionsContent"></div>
   </div>
@@ -2370,6 +2370,12 @@ function dlHTML(name, html) {
 function today() { return new Date().toISOString().slice(0,10); }
 
 // ===== MODAL HELPERS =====
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+  if (id === 'settingsModal') closeThemePalette();
+}
+
 function closeOnBg(e, id) {
   if (e.target === document.getElementById(id)) {
     document.getElementById(id).classList.remove('open');
