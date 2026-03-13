@@ -492,7 +492,39 @@ self.addEventListener('fetch', e => {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;">
       <input type="text" id="exportFileName" class="input-field" style="flex:1;margin-bottom:0;"
         placeholder="vaultmark_yedek">
-      <span style="color:var(--text2);font-size:13px;white-space:nowrap;">.html</span>
+      <span id="exportFileExt" style="color:var(--text2);font-size:13px;white-space:nowrap;">.html</span>
+    </div>
+
+    <!-- Format seçimi -->
+    <div class="input-label" style="margin-bottom:8px;">Format</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+      <div onclick="selectExportFormat('vaultmark')" id="fmtVaultmark"
+        style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:2px solid var(--accent);border-radius:12px;cursor:pointer;">
+        <span style="font-size:20px;">📄</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">Vaultmark HTML</div>
+          <div style="font-size:11px;color:var(--text2);">Güzel görünümlü, Vaultmark'a özel</div>
+        </div>
+        <div id="fmtVaultmarkCheck" style="width:20px;height:20px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;">✓</div>
+      </div>
+      <div onclick="selectExportFormat('bookmark')" id="fmtBookmark"
+        style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:2px solid var(--border);border-radius:12px;cursor:pointer;">
+        <span style="font-size:20px;">🔖</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">Bookmark HTML</div>
+          <div style="font-size:11px;color:var(--text2);">Chrome, Firefox, May ve diğer uygulamalar</div>
+        </div>
+        <div id="fmtBookmarkCheck" style="width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);">○</div>
+      </div>
+      <div onclick="selectExportFormat('json')" id="fmtJson"
+        style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:2px solid var(--border);border-radius:12px;cursor:pointer;">
+        <span style="font-size:20px;">📋</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">JSON</div>
+          <div style="font-size:11px;color:var(--text2);">Tüm veriler, klasör yapısıyla</div>
+        </div>
+        <div id="fmtJsonCheck" style="width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);">○</div>
+      </div>
     </div>
 
     <!-- Dizin seçimi -->
@@ -2229,11 +2261,71 @@ ${body}</div><!-- /scroll-wrap -->
 let _exportSaveMode = 'all'; // 'all' | folderId
 let _exportDirMode = 'default'; // 'default' | 'custom'
 let _exportDirHandle = null; // FileSystemDirectoryHandle
+let _exportFormat = 'vaultmark'; // 'vaultmark' | 'bookmark' | 'json'
+
+function selectExportFormat(fmt) {
+  _exportFormat = fmt;
+  const formats = ['vaultmark', 'bookmark', 'json'];
+  formats.forEach(f => {
+    const card = document.getElementById('fmt' + f.charAt(0).toUpperCase() + f.slice(1));
+    const check = document.getElementById('fmt' + f.charAt(0).toUpperCase() + f.slice(1) + 'Check');
+    if (f === fmt) {
+      card.style.borderColor = 'var(--accent)';
+      check.style.background = 'var(--accent)';
+      check.style.color = '#000';
+      check.textContent = '✓';
+    } else {
+      card.style.borderColor = 'var(--border)';
+      check.style.background = 'var(--border)';
+      check.style.color = 'var(--text2)';
+      check.textContent = '○';
+    }
+  });
+  // Uzantıyı güncelle
+  const ext = fmt === 'json' ? '.json' : '.html';
+  document.getElementById('exportFileExt').textContent = ext;
+}
+
+function buildBookmarkHTML(title, linkList) {
+  const byFolder = {};
+  linkList.forEach(l => {
+    const path = getFolderPath(l.folderId) || 'Genel';
+    if (!byFolder[path]) byFolder[path] = [];
+    byFolder[path].push(l);
+  });
+  let body = '';
+  Object.keys(byFolder).sort().forEach(path => {
+    body += `<DT><H3>${path}</H3>\n<DL><p>\n`;
+    byFolder[path].forEach(l => {
+      const addDate = l.date ? Math.floor(new Date(l.date.split('.').reverse().join('-')).getTime()/1000) : '';
+      body += `<DT><A HREF="${l.url}" ADD_DATE="${addDate}">${l.title || l.url}</A>\n`;
+    });
+    body += `</DL><p>\n`;
+  });
+  return `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<!-- This is an automatically generated file.\n     It will be read and overwritten.\n     DO NOT EDIT! -->\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>${title}</TITLE>\n<H1>${title}</H1>\n<DL><p>\n${body}</DL><p>`;
+}
+
+function buildJSONExport(linkList) {
+  const exportFolders = folders.filter(f => f.id !== TRASH_ID);
+  return JSON.stringify({
+    app: 'Vaultmark',
+    version: '1.0',
+    date: new Date().toISOString(),
+    folders: exportFolders.map(f => ({id: f.id, name: f.name, parentId: f.parentId, color: f.color})),
+    links: linkList.filter(l => l.folderId !== TRASH_ID).map(l => ({
+      id: l.id, title: l.title, url: l.url, folderId: l.folderId,
+      note: l.note, date: l.date, favicon: l.favicon
+    }))
+  }, null, 2);
+}
+
 
 function openExportSaveModal(mode) {
   _exportSaveMode = mode;
   _exportDirMode = 'default';
   _exportDirHandle = null;
+  _exportFormat = 'vaultmark';
+  selectExportFormat('vaultmark');
 
   // Varsayılan dosya adı oluştur
   let defaultName;
@@ -2304,27 +2396,39 @@ function selectExportDir(mode) {
 }
 
 async function confirmExportSave() {
+  const isJson = _exportFormat === 'json';
+  const ext = isJson ? '.json' : '.html';
   let fileName = (document.getElementById('exportFileName').value.trim() || 'vaultmark_yedek');
-  if (!fileName.endsWith('.html')) fileName += '.html';
+  // Uzantıyı temizle ve doğru ekle
+  fileName = fileName.replace(/\.(html|htm|json)$/i, '') + ext;
 
-  let html;
-  if (_exportSaveMode === 'all') {
-    html = buildExportHTML('Vaultmark - Tüm Linkler', links);
-  } else {
-    function collectLinks(id) {
-      let res = getFolderLinks(id);
-      getSubFolders(id).forEach(sub => { res = res.concat(collectLinks(sub.id)); });
-      return res;
-    }
-    const f = getFolderById(_exportSaveMode);
-    html = buildExportHTML(`Vaultmark - ${f?.name || ''}`, collectLinks(_exportSaveMode));
+  function collectLinks(id) {
+    let res = getFolderLinks(id);
+    getSubFolders(id).forEach(sub => { res = res.concat(collectLinks(sub.id)); });
+    return res;
   }
 
-  // Özel konum: showSaveFilePicker ile seçilmiş FileSystemFileHandle
+  let linkList = _exportSaveMode === 'all' ? links : collectLinks(_exportSaveMode);
+  let content, mimeType;
+
+  if (_exportFormat === 'json') {
+    content = buildJSONExport(linkList);
+    mimeType = 'application/json;charset=utf-8';
+  } else if (_exportFormat === 'bookmark') {
+    const title = _exportSaveMode === 'all' ? 'Vaultmark Bookmarks' : (getFolderById(_exportSaveMode)?.name || 'Vaultmark');
+    content = buildBookmarkHTML(title, linkList);
+    mimeType = 'text/html;charset=utf-8';
+  } else {
+    const title = _exportSaveMode === 'all' ? 'Vaultmark - Tüm Linkler' : `Vaultmark - ${getFolderById(_exportSaveMode)?.name || ''}`;
+    content = buildExportHTML(title, linkList);
+    mimeType = 'text/html;charset=utf-8';
+  }
+
+  // Özel konum
   if (_exportDirMode === 'custom' && _exportDirHandle) {
     try {
       const writable = await _exportDirHandle.createWritable();
-      await writable.write(new Blob([html], { type: 'text/html;charset=utf-8' }));
+      await writable.write(new Blob([content], { type: mimeType }));
       await writable.close();
       document.getElementById('exportSaveModal').classList.remove('open');
       showToast(`✅ ${_exportDirHandle.name} kaydedildi`);
@@ -2333,15 +2437,15 @@ async function confirmExportSave() {
       console.error('Export hatası:', e);
       showConfirm('⚠️', 'Kaydedilemedi',
         `Seçilen konuma kaydedilemedi. Varsayılan İndirmeler klasörüne kaydedelim mi?`,
-        () => { dlHTML(fileName, html); document.getElementById('exportSaveModal').classList.remove('open'); },
+        () => { dlFile(fileName, content, mimeType); document.getElementById('exportSaveModal').classList.remove('open'); },
         'Evet, İndir'
       );
       return;
     }
   }
 
-  // Varsayılan: tarayıcı indirme
-  dlHTML(fileName, html);
+  // Varsayılan indirme
+  dlFile(fileName, content, mimeType);
   document.getElementById('exportSaveModal').classList.remove('open');
 }
 
@@ -2361,8 +2465,12 @@ function exportSingle(folderId) {
 }
 
 function dlHTML(name, html) {
+  dlFile(name, html, 'text/html;charset=utf-8');
+}
+
+function dlFile(name, content, mimeType) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([html], {type:'text/html;charset=utf-8'}));
+  a.href = URL.createObjectURL(new Blob([content], {type: mimeType}));
   a.download = name; a.click();
   showToast('✓ İndirildi!');
 }
