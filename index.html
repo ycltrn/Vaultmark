@@ -308,6 +308,13 @@ self.addEventListener('fetch', e => {
   <div class="header-top">
     <div class="logo"><span style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;">Vault<span style="color:#3bdc58;">mark</span></span></div>
     <div class="header-btns">
+      <button class="hdr-btn" onclick="quickBackup()" title="Hızlı Yedek">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L12 14"/>
+          <path d="M8 10l4 4 4-4"/>
+          <path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
+        </svg>
+      </button>
       <div class="sort-dropdown-wrap">
         <button class="hdr-btn" onclick="toggleSortDropdown(event)">⇅</button>
         <div class="sort-dropdown" id="sortDropdown">
@@ -2509,6 +2516,19 @@ async function confirmExportSave() {
   // Varsayılan indirme
   dlFile(fileName, content, mimeType);
   document.getElementById('exportSaveModal').classList.remove('open');
+}
+
+function quickBackup() {
+  const dateStr = today();
+  // HTML yedek
+  const html = buildExportHTML('Vaultmark - Tüm Linkler', links);
+  dlFile(`vaultmark_yedek_${dateStr}.html`, html, 'text/html;charset=utf-8');
+  // JSON yedek
+  setTimeout(() => {
+    const json = buildJSONExport(links);
+    dlFile(`vaultmark_yedek_${dateStr}.json`, json, 'application/json;charset=utf-8');
+  }, 800);
+  showToast('💾 Yedekleniyor...');
 }
 
 function exportAll() {
