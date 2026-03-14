@@ -104,11 +104,12 @@ self.addEventListener('fetch', e => {
     .sort-opt.active{color:var(--accent);font-weight:600;}
 
     /* BREADCRUMB */
-    .breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 16px 4px;font-size:13px;color:var(--text2);overflow-x:auto;scrollbar-width:none;}
+    .breadcrumb{display:flex;align-items:center;gap:4px;padding:10px 16px 4px;font-size:13px;color:var(--text2);flex-wrap:wrap;}
     .breadcrumb::-webkit-scrollbar{display:none;}
+    .breadcrumb span, .breadcrumb a{flex-shrink:0;}
     .bc-item{cursor:pointer;white-space:nowrap;transition:color 0.2s;}
     .bc-item:hover{color:var(--accent);}
-    .bc-sep{color:var(--border);}
+    .bc-sep{color:#666;font-size:15px;}
     .bc-current{color:var(--text);font-weight:500;}
 
     /* MULTIBAR */
