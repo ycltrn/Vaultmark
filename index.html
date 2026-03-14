@@ -419,15 +419,26 @@ self.addEventListener('fetch', e => {
       <label class="input-label">📝 Not (isteğe bağlı)</label>
       <textarea class="input-field" id="noteInput" placeholder="Bu link hakkında not ekle..." rows="2" style="resize:none;font-family:inherit;"></textarea>
     </div>
-    <label class="input-label" style="margin-bottom:10px;">📁 Klasör Seç</label>
-    <div class="cat-select" id="modalCatSelect"></div>
+    <!-- Klasör seçimi — sadece ana sayfada gösterilir -->
+    <div id="folderSelectWrap">
+      <div onclick="toggleFolderDropdown()" id="folderSelectBtn"
+        style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">📁</span>
+          <span id="folderSelectLabel" style="font-size:14px;font-weight:500;">Ana Sayfa (Genel)</span>
+        </div>
+        <svg id="folderSelectChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div id="folderSelectDropdown" style="display:none;max-height:220px;overflow-y:auto;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;">
+        <div id="modalCatSelect"></div>
+      </div>
+    </div>
     <button class="save-btn" id="linkSaveBtn" onclick="saveLink()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Kaydet
     </button>
   </div>
 </div>
-
 <!-- FOLDER MANAGER MODAL -->
 <div class="modal-overlay" id="catModal" onclick="closeOnBg(event,'catModal')">
   <div class="modal">
@@ -2039,15 +2050,56 @@ function openCatModal() {
 let editingLinkId = null;
 
 function renderModalCats(selectedId) {
+  // Normal klasörler A-Z sırası, özel klasörler hariç
+  const sorted = folders
+    .filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID && f.parentId === null)
+    .sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+
   function renderOpts(parentId, depth) {
-    return folders.filter(f => f.parentId === parentId).map(f => {
-      const path = '  '.repeat(depth) + (depth ? '└ ' : '') + f.name;
+    const list = folders
+      .filter(f => f.id !== FAVORITES_ID && f.id !== TRASH_ID && f.parentId === parentId)
+      .sort((a,b) => a.name.localeCompare(b.name, 'tr'));
+    return list.map(f => {
+      const pad = depth * 14;
       const sel = f.id === selectedId;
-      return `<div class="cat-option ${sel?'selected':''}" data-id="${f.id}" onclick="selectCat(this)">${path}</div>
-              ${renderOpts(f.id, depth+1)}`;
+      return `<div class="cat-option ${sel?'selected':''}" data-id="${f.id}"
+        onclick="selectCat(this)"
+        style="padding:11px 14px 11px ${14+pad}px;${depth?'border-left:2px solid var(--border);margin-left:'+pad+'px;':''}">
+        ${depth ? '└ ' : '📁 '}${f.name}
+      </div>
+      ${renderOpts(f.id, depth+1)}`;
     }).join('');
   }
-  document.getElementById('modalCatSelect').innerHTML = renderOpts(null, 0);
+
+  // Ana sayfa seçeneği
+  const rootSel = !selectedId || selectedId === null;
+  document.getElementById('modalCatSelect').innerHTML =
+    `<div class="cat-option ${rootSel?'selected':''}" data-id="" onclick="selectCat(this)"
+      style="padding:11px 14px;">
+      🏠 Ana Sayfa (Genel)
+    </div>` + renderOpts(null, 0);
+
+  // Seçili klasörün adını butona yaz
+  updateFolderSelectLabel(selectedId);
+}
+
+function updateFolderSelectLabel(id) {
+  const btn = document.getElementById('folderSelectLabel');
+  if (!btn) return;
+  if (!id) {
+    btn.textContent = 'Ana Sayfa (Genel)';
+  } else {
+    const f = getFolderById(id);
+    btn.textContent = f ? f.name : 'Ana Sayfa (Genel)';
+  }
+}
+
+function toggleFolderDropdown() {
+  const dd = document.getElementById('folderSelectDropdown');
+  const chevron = document.getElementById('folderSelectChevron');
+  const open = dd.style.display === 'none';
+  dd.style.display = open ? 'block' : 'none';
+  chevron.style.transform = open ? 'rotate(180deg)' : '';
 }
 
 function openAddLinkModal() {
@@ -2058,10 +2110,19 @@ function openAddLinkModal() {
   document.getElementById('titleInput').value = '';
   document.getElementById('noteInput').value = '';
   document.getElementById('urlHint').style.display = 'none';
-  renderModalCats(currentFolderId);
-  // Pre-select current folder
-  const opts = document.querySelectorAll('#modalCatSelect .cat-option');
-  opts.forEach(o => { if (o.dataset.id === currentFolderId) o.classList.add('selected'); });
+
+  // Klasör içindeyse klasör seçimini gizle
+  const wrap = document.getElementById('folderSelectWrap');
+  const isInFolder = currentFolderId && currentFolderId !== FAVORITES_ID && currentFolderId !== TRASH_ID;
+  wrap.style.display = isInFolder ? 'none' : 'block';
+
+  if (!isInFolder) {
+    // Dropdown kapalı başlasın
+    document.getElementById('folderSelectDropdown').style.display = 'none';
+    document.getElementById('folderSelectChevron').style.transform = '';
+    renderModalCats(null);
+  }
+
   pushModalHash();
   document.getElementById("linkModal").classList.add("open");
   setTimeout(async () => {
@@ -2089,6 +2150,12 @@ function editLink(id) {
   document.getElementById('titleInput').value = link.title || '';
   document.getElementById('noteInput').value = link.note || '';
   document.getElementById('urlHint').style.display = 'block';
+
+  // Düzenleme modunda her zaman klasör seçimi göster
+  const wrap = document.getElementById('folderSelectWrap');
+  wrap.style.display = 'block';
+  document.getElementById('folderSelectDropdown').style.display = 'none';
+  document.getElementById('folderSelectChevron').style.transform = '';
   renderModalCats(link.folderId);
   document.getElementById('linkModal').classList.add('open');
 }
@@ -2096,6 +2163,10 @@ function editLink(id) {
 function selectCat(el) {
   document.querySelectorAll('.cat-option').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
+  updateFolderSelectLabel(el.dataset.id || null);
+  // Dropdown kapat
+  document.getElementById('folderSelectDropdown').style.display = 'none';
+  document.getElementById('folderSelectChevron').style.transform = '';
 }
 
 async function tryAutoPaste() {
@@ -2123,8 +2194,16 @@ function saveLink() {
   const finalUrl = url.startsWith('http') ? url : 'https://' + url;
   const title = document.getElementById('titleInput').value.trim();
   const note = document.getElementById('noteInput').value.trim();
-  const catEl = document.querySelector('#modalCatSelect .cat-option.selected');
-  const folderId = catEl ? catEl.dataset.id : (currentFolderId || folders[0]?.id || null);
+
+  // Klasör içindeyse direkt oraya kaydet, ana sayfadaysa seçili klasörü al
+  const isInFolder = currentFolderId && currentFolderId !== FAVORITES_ID && currentFolderId !== TRASH_ID;
+  let folderId;
+  if (isInFolder) {
+    folderId = currentFolderId;
+  } else {
+    const catEl = document.querySelector('#modalCatSelect .cat-option.selected');
+    folderId = catEl ? (catEl.dataset.id || null) : null;
+  }
 
   if (editingLinkId) {
     // Düzenleme modunda — duplicate kontrolü yok
